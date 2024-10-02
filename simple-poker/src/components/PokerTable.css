@@ -155,12 +155,23 @@ html, body {
     cursor: pointer;
   }
   
-  @media (max-width: 600px) {
+/* Adjust layout for mobile screens */
+@media (max-width: 600px) {
     .controls {
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 0px;
-      margin-bottom: 20px;
+        flex-direction: row;  /* Change to row to align items in a row */
+        justify-content: space-around;  /* Spread out controls evenly */
+        align-items: center;
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
     }
-  }
-  
+    
+    .bank, .bet {
+        margin-bottom: 0;  /* Remove extra space between controls */
+    }
+
+    .deal-button {
+        margin: 0;  /* Remove extra margin */
+        padding: 10px 20px;  /* Reduce padding to fit mobile */
+    }
+}
