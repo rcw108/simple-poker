@@ -13,7 +13,7 @@ bot.onText(/\/game/, (msg) => {
   const chatId = msg.chat.id;
 
   // Define the Web App URL
-  const webAppUrl = 'https://simple-poker-blond.vercel.app/';
+  const webAppUrl = 'https://simple-poker-kappa.vercel.app/';
 
   // Create the inline keyboard with the WebApp button
   const replyMarkup = {
