@@ -7,9 +7,8 @@ const PokerTable = () => {
   const [bet, setBet] = useState(10);
   const [tableCards, setTableCards] = useState([]);
   const [userCards, setUserCards] = useState([]);
-  const [result, setResult] = useState(""); // For showing the "Flash" or other hand result
-  const [winnings, setWinnings] = useState(0); // Track winnings from the hand
-
+  const [result, setResult] = useState(""); 
+  const [winnings, setWinnings] = useState(0); 
   // Casino win rate target: 15-20%
   const casinoBiasThreshold = 0.15; // 15% chance of user losing (adjustable)
 
@@ -98,31 +97,27 @@ const PokerTable = () => {
   const dealCards = () => {
     if (bank < 10) {
       setResult("Out of Balance. Cannot deal.");
-      return; // Prevent dealing if bank balance is 0
+      return; 
     }
 
-    // Shuffle the deck
     const shuffledDeck = shuffleArray([...allCards]);
 
-    // Deal 5 cards to the table and 2 cards to the user
+
     const tableCards = shuffledDeck.slice(0, 5);
     const userCards = shuffledDeck.slice(5, 7);
 
     setTableCards(tableCards);
     setUserCards(userCards);
 
-    // Combine all cards to evaluate the hand
     const allPlayerCards = [...tableCards, ...userCards];
     const { hand, bonus } = getBiasedHandRank(allPlayerCards);
 
-    // Update the result with the hand rank
     setResult(hand);
 
-    // Calculate winnings: subtract bet, add bonus
     const netChange = bonus - bet; // Bank will be adjusted by the bonus minus the bet
     setWinnings(bonus);
 
-    setBank(bank + netChange);  // Update bank with the new winnings
+    setBank(bank + netChange);
   };
 
   return (
