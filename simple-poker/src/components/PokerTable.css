@@ -167,11 +167,11 @@ html, body {
     }
     
     .bank, .bet {
-        margin-bottom: 0;  /* Remove extra space between controls */
+        margin-bottom: 0; 
     }
 
     .deal-button {
-        margin: 0;  /* Remove extra margin */
-        padding: 10px 20px;  /* Reduce padding to fit mobile */
+        margin: 0; 
+        padding: 10px 20px;  
     }
 }
