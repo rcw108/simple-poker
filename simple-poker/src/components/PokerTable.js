@@ -10,63 +10,43 @@ const PokerTable = () => {
   const [result, setResult] = useState("");
   const [winnings, setWinnings] = useState(0);
 
-  // Define the mapping for suits based on your filenames
-  const suitMap = {
-    'q': 'hearts',
-    'a': 'diamonds',
-    's': 'clubs',
-    'w': 'spades',
-    'e': 'hearts',
-    'r': 'diamonds',
-    // Add other mappings if necessary
-  };
-
   // Define the mapping for face card ranks
   const rankMap = {
-    'j': 11,
-    'q': 12,
-    'k': 13,
-    'a': 14,
+    'J': 11,
+    'Q': 12,
+    'K': 13,
+    'A': 14,
   };
 
   // Generate the deck
-  const allCards = [];
-
-  // List of all your card filenames (without the '/assets/cards/' prefix and '.png' suffix)
-  const cardFilenames = [
-    '2q', '2a', '2s', '2w',
-    '3e', '3q', '3r', '3w',
-    '4e', '4q', '4r', '4w',
-    '5e', '5q', '5r', '5w',
-    '6e', '6q', '6r', '6w',
-    '7e', '7q', '7r', '7w',
-    '8e', '8q', '8r', '8w',
-    '9e', '9q', '9r', '9w',
-    '10e', '10q', '10r', '10w',
-    'a1', 'a2', 'a3', 'a4',
-    'k1', 'k2', 'k3', 'k4',
-    'q1', 'q2', 'q3', 'q4',
-    'w1', 'w2', 'w3', 'w4',
+  const suits = ['h', 'd', 'c', 's']; // Hearts, Diamonds, Clubs, Spades
+  const ranks = [
+    '2', '3', '4', '5', '6', '7', '8', '9', '10',
+    'J', 'Q', 'K', 'A',
   ];
 
+  const allCards = [];
+
   // Build the allCards array
-  cardFilenames.forEach((filename) => {
-    const match = filename.match(/^(\d+|[jqka])([a-z0-9])/i);
-    if (match) {
-      let [_, rankStr, suitLetter] = match;
+  suits.forEach((suit) => {
+    ranks.forEach((rankStr) => {
       let rank = parseInt(rankStr, 10);
       if (isNaN(rank)) {
-        rank = rankMap[rankStr.toLowerCase()];
+        rank = rankMap[rankStr];
       }
-      const suit = suitMap[suitLetter.toLowerCase()];
-      if (suit) {
-        allCards.push({
-          rank,
-          suit,
-          image: `/assets/cards/${filename}.png`,
-        });
-      }
-    }
+      const suitName = {
+        'h': 'hearts',
+        'd': 'diamonds',
+        'c': 'clubs',
+        's': 'spades',
+      }[suit];
+
+      allCards.push({
+        rank,
+        suit: suitName,
+        image: `/assets/cards/${rankStr}${suit}.png`,
+      });
+    });
   });
 
   // Increase the bet
@@ -118,7 +98,7 @@ const PokerTable = () => {
       suitsCount[card.suit] = (suitsCount[card.suit] || 0) + 1;
     });
     const flushSuit = Object.keys(suitsCount).find((suit) => suitsCount[suit] >= 5);
-    const isFlush = !!flushSuit;
+    const isFlush = flushSuit !== undefined;
 
     // Check for Straight
     let ranks = [...new Set(sortedCards.map((card) => card.rank))];
@@ -126,7 +106,7 @@ const PokerTable = () => {
 
     // Handle low-Ace straight (A-2-3-4-5)
     if (ranks.includes(14)) {
-      ranks.push(1); // Treat Ace as low
+      ranks = [1, ...ranks];
     }
     ranks.sort((a, b) => a - b);
 
@@ -226,6 +206,7 @@ const PokerTable = () => {
 
     setBank(bank - bet + winAmount);
   };
+
 
   return (
     <div className="poker-table">
