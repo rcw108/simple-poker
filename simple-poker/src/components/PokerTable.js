@@ -7,80 +7,76 @@ const PokerTable = () => {
   const [bet, setBet] = useState(10);
   const [tableCards, setTableCards] = useState([]);
   const [userCards, setUserCards] = useState([]);
-  const [result, setResult] = useState(""); 
-  const [winnings, setWinnings] = useState(0); 
-  // Casino win rate target: 15-20%
-  const casinoBiasThreshold = 0.15; // 15% chance of user losing (adjustable)
+  const [result, setResult] = useState("");
+  const [winnings, setWinnings] = useState(0);
 
-  // Card data (to be replaced with actual paths to images)
-  const allCards = [
-    '/assets/cards/2q.png', '/assets/cards/2a.png', '/assets/cards/2s.png', '/assets/cards/2w.png',
-    '/assets/cards/3e.png', '/assets/cards/3q.png', '/assets/cards/3r.png', '/assets/cards/3w.png',
-    '/assets/cards/4e.png', '/assets/cards/4q.png', '/assets/cards/4r.png', '/assets/cards/4w.png',
-    '/assets/cards/5e.png', '/assets/cards/5q.png', '/assets/cards/5r.png', '/assets/cards/5w.png',
-    '/assets/cards/6e.png', '/assets/cards/6q.png', '/assets/cards/6r.png', '/assets/cards/6w.png',
-    '/assets/cards/7e.png', '/assets/cards/7q.png', '/assets/cards/7r.png', '/assets/cards/7w.png',
-    '/assets/cards/8e.png', '/assets/cards/8q.png', '/assets/cards/8r.png', '/assets/cards/8w.png',
-    '/assets/cards/9e.png', '/assets/cards/9q.png', '/assets/cards/9r.png', '/assets/cards/9w.png',
-    '/assets/cards/10e.png', '/assets/cards/10q.png', '/assets/cards/10r.png', '/assets/cards/10w.png',
-    '/assets/cards/a1.png', '/assets/cards/a2.png', '/assets/cards/a3.png', '/assets/cards/a4.png',
-    '/assets/cards/k1.png', '/assets/cards/k2.png', '/assets/cards/k3.png', '/assets/cards/k4.png',
-    '/assets/cards/q1.png', '/assets/cards/q2.png', '/assets/cards/q3.png', '/assets/cards/q4.png',
-    '/assets/cards/w1.png', '/assets/cards/w2.png', '/assets/cards/w3.png', '/assets/cards/w4.png',
+  // Define the mapping for suits based on your filenames
+  const suitMap = {
+    'q': 'hearts',
+    'a': 'diamonds',
+    's': 'clubs',
+    'w': 'spades',
+    'e': 'hearts',
+    'r': 'diamonds',
+    // Add other mappings if necessary
+  };
+
+  // Define the mapping for face card ranks
+  const rankMap = {
+    'j': 11,
+    'q': 12,
+    'k': 13,
+    'a': 14,
+  };
+
+  // Generate the deck
+  const allCards = [];
+
+  // List of all your card filenames (without the '/assets/cards/' prefix and '.png' suffix)
+  const cardFilenames = [
+    '2q', '2a', '2s', '2w',
+    '3e', '3q', '3r', '3w',
+    '4e', '4q', '4r', '4w',
+    '5e', '5q', '5r', '5w',
+    '6e', '6q', '6r', '6w',
+    '7e', '7q', '7r', '7w',
+    '8e', '8q', '8r', '8w',
+    '9e', '9q', '9r', '9w',
+    '10e', '10q', '10r', '10w',
+    'a1', 'a2', 'a3', 'a4',
+    'k1', 'k2', 'k3', 'k4',
+    'q1', 'q2', 'q3', 'q4',
+    'w1', 'w2', 'w3', 'w4',
   ];
 
-   // Increase the bet
-   const increaseBet = () => {
-    if (bet < bank) setBet(bet + 10); // Increase bet by 10, only if there is enough balance
+  // Build the allCards array
+  cardFilenames.forEach((filename) => {
+    const match = filename.match(/^(\d+|[jqka])([a-z0-9])/i);
+    if (match) {
+      let [_, rankStr, suitLetter] = match;
+      let rank = parseInt(rankStr, 10);
+      if (isNaN(rank)) {
+        rank = rankMap[rankStr.toLowerCase()];
+      }
+      const suit = suitMap[suitLetter.toLowerCase()];
+      if (suit) {
+        allCards.push({
+          rank,
+          suit,
+          image: `/assets/cards/${filename}.png`,
+        });
+      }
+    }
+  });
+
+  // Increase the bet
+  const increaseBet = () => {
+    if (bet < bank) setBet(bet + 10);
   };
 
   // Decrease the bet
   const decreaseBet = () => {
-    if (bet > 10) setBet(bet - 10); // Minimum bet is 10
-  };
-
-  // Helper functions to evaluate hands
-  const getCardValue = (card) => {
-    const valueMap = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
-    const rank = card.match(/\d+|[JQKA]/)[0]; // Extract rank (e.g., '2', 'J', 'A')
-    return valueMap[rank];
-  };
-
-  const getCardSuit = (card) => card.match(/[a-z]$/)[0]; // Extract suit from the card (e.g., 's' for spades)
-
-  // Check for specific poker hands
-  const isFlush = (cards) => cards.map(card => getCardSuit(card)).every(suit => suit === cards[0][1]);
-  const isStraight = (cards) => {
-    const values = cards.map(card => getCardValue(card)).sort((a, b) => a - b);
-    return values.every((val, idx) => idx === 0 || val === values[idx - 1] + 1);
-  };
-
-  // Adjusted hand probabilities (fixed bonus for each hand)
-  const handProbabilities = [
-    { name: "Royal Flush", chance: 0.0032, bonus: 1000 },
-    { name: "Straight Flush", chance: 0.0279, bonus: 50 },
-    { name: "Four of a Kind", chance: 0.168, bonus: 40 },
-    { name: "Full House", chance: 2.60, bonus: 30 },
-    { name: "Flush", chance: 3.03, bonus: 20 },
-    { name: "Straight", chance: 4.62, bonus: 15 },
-    { name: "Three of a Kind", chance: 4.83, bonus: 10 },
-    { name: "Two Pair", chance: 23.5, bonus: 5 },
-    { name: "One Pair", chance: 43.8, bonus: 2 },
-    { name: "High Card", chance: 71.4, bonus: 1 }
-  ];
-
-  // Biased hand rank calculation based on probabilities
-  const getBiasedHandRank = (allCards) => {
-    const rand = Math.random() * 100;
-    let cumulativeChance = 0;
-
-    for (const hand of handProbabilities) {
-      cumulativeChance += hand.chance;
-      if (rand < cumulativeChance) {
-        return { hand: hand.name, bonus: hand.bonus };
-      }
-    }
-    return { hand: "High Card", bonus: 1 }; // Default to High Card
+    if (bet > 10) setBet(bet - 10);
   };
 
   // Shuffle array of cards
@@ -93,31 +89,142 @@ const PokerTable = () => {
     return shuffled;
   };
 
+  // Function to get all combinations of a certain size
+  const getCombinations = (array, size) => {
+    const results = [];
+
+    const helper = (start, combo) => {
+      if (combo.length === size) {
+        results.push(combo);
+        return;
+      }
+      for (let i = start; i < array.length; i++) {
+        helper(i + 1, combo.concat(array[i]));
+      }
+    };
+
+    helper(0, []);
+    return results;
+  };
+
+  // Evaluate hand function
+  const evaluateHand = (cards) => {
+    // Sort cards by rank
+    const sortedCards = cards.slice().sort((a, b) => a.rank - b.rank);
+
+    // Check for Flush
+    const suitsCount = {};
+    cards.forEach((card) => {
+      suitsCount[card.suit] = (suitsCount[card.suit] || 0) + 1;
+    });
+    const flushSuit = Object.keys(suitsCount).find((suit) => suitsCount[suit] >= 5);
+    const isFlush = !!flushSuit;
+
+    // Check for Straight
+    let ranks = [...new Set(sortedCards.map((card) => card.rank))];
+    let isStraight = false;
+
+    // Handle low-Ace straight (A-2-3-4-5)
+    if (ranks.includes(14)) {
+      ranks.push(1); // Treat Ace as low
+    }
+    ranks.sort((a, b) => a - b);
+
+    for (let i = 0; i <= ranks.length - 5; i++) {
+      if (
+        ranks[i] + 1 === ranks[i + 1] &&
+        ranks[i] + 2 === ranks[i + 2] &&
+        ranks[i] + 3 === ranks[i + 3] &&
+        ranks[i] + 4 === ranks[i + 4]
+      ) {
+        isStraight = true;
+        break;
+      }
+    }
+
+    // Check for Straight Flush and Royal Flush
+    let isStraightFlush = false;
+    let isRoyalFlush = false;
+    if (isFlush) {
+      const flushCards = cards.filter((card) => card.suit === flushSuit);
+      const flushRanks = [...new Set(flushCards.map((card) => card.rank))];
+      if (flushRanks.includes(14)) {
+        flushRanks.push(1);
+      }
+      flushRanks.sort((a, b) => a - b);
+      for (let i = 0; i <= flushRanks.length - 5; i++) {
+        if (
+          flushRanks[i] + 1 === flushRanks[i + 1] &&
+          flushRanks[i] + 2 === flushRanks[i + 2] &&
+          flushRanks[i] + 3 === flushRanks[i + 3] &&
+          flushRanks[i] + 4 === flushRanks[i + 4]
+        ) {
+          isStraightFlush = true;
+          if (flushRanks.slice(i, i + 5).includes(14) && flushRanks.slice(i, i + 5).includes(10)) {
+            isRoyalFlush = true;
+          }
+          break;
+        }
+      }
+    }
+
+    // Count card occurrences
+    const counts = {};
+    cards.forEach((card) => {
+      counts[card.rank] = (counts[card.rank] || 0) + 1;
+    });
+    const countsValues = Object.values(counts);
+    const hasFourOfKind = countsValues.includes(4);
+    const hasThreeOfKind = countsValues.includes(3);
+    const pairs = countsValues.filter((count) => count === 2).length;
+
+    // Determine hand rank
+    if (isRoyalFlush) return { hand: "Royal Flush", multiplier: 250 };
+    if (isStraightFlush) return { hand: "Straight Flush", multiplier: 50 };
+    if (hasFourOfKind) return { hand: "Four of a Kind", multiplier: 25 };
+    if (hasThreeOfKind && pairs >= 1) return { hand: "Full House", multiplier: 9 };
+    if (isFlush) return { hand: "Flush", multiplier: 6 };
+    if (isStraight) return { hand: "Straight", multiplier: 4 };
+    if (hasThreeOfKind) return { hand: "Three of a Kind", multiplier: 3 };
+    if (pairs >= 2) return { hand: "Two Pair", multiplier: 2 };
+    if (pairs === 1) return { hand: "One Pair", multiplier: 1 };
+    return { hand: "High Card", multiplier: 0 };
+  };
+
   // Deal cards (on button click)
   const dealCards = () => {
-    if (bank < 10) {
-      setResult("Out of Balance. Cannot deal.");
-      return; 
+    if (bank < bet) {
+      setResult("Insufficient balance. Cannot deal.");
+      return;
     }
 
     const shuffledDeck = shuffleArray([...allCards]);
 
+    const newUserCards = shuffledDeck.slice(0, 2);
+    const newTableCards = shuffledDeck.slice(2, 7);
 
-    const tableCards = shuffledDeck.slice(0, 5);
-    const userCards = shuffledDeck.slice(5, 7);
+    setUserCards(newUserCards);
+    setTableCards(newTableCards);
 
-    setTableCards(tableCards);
-    setUserCards(userCards);
+    const allPlayerCards = [...newUserCards, ...newTableCards];
 
-    const allPlayerCards = [...tableCards, ...userCards];
-    const { hand, bonus } = getBiasedHandRank(allPlayerCards);
+    // Generate all possible 5-card combinations
+    const combinations = getCombinations(allPlayerCards, 5);
 
-    setResult(hand);
+    // Evaluate each hand to find the best one
+    let bestHand = { multiplier: 0 };
+    combinations.forEach((hand) => {
+      const evaluation = evaluateHand(hand);
+      if (evaluation.multiplier > bestHand.multiplier) {
+        bestHand = evaluation;
+      }
+    });
 
-    const netChange = bonus - bet; // Bank will be adjusted by the bonus minus the bet
-    setWinnings(bonus);
+    setResult(bestHand.hand);
+    const winAmount = bet * bestHand.multiplier;
+    setWinnings(winAmount);
 
-    setBank(bank + netChange);
+    setBank(bank - bet + winAmount);
   };
 
   return (
@@ -136,14 +243,14 @@ const PokerTable = () => {
         {/* Show table cards */}
         <div className="table-cards">
           {tableCards.map((card, index) => (
-            <img key={index} src={card} alt={`Table card ${index}`} className="card" />
+            <img key={index} src={card.image} alt={`Table card ${index}`} className="card" />
           ))}
         </div>
 
         {/* Show user cards */}
         <div className="user-cards">
           {userCards.map((card, index) => (
-            <img key={index} src={card} alt={`User card ${index}`} className="card" />
+            <img key={index} src={card.image} alt={`User card ${index}`} className="card" />
           ))}
         </div>
 
