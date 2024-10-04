@@ -158,17 +158,17 @@ const PokerTable = () => {
     const hasThreeOfKind = countsValues.includes(3);
     const pairs = countsValues.filter((count) => count === 2).length;
 
-    // Determine hand rank
-    if (isRoyalFlush) return { hand: "Royal Flush", multiplier: 250 };
-    if (isStraightFlush) return { hand: "Straight Flush", multiplier: 50 };
-    if (hasFourOfKind) return { hand: "Four of a Kind", multiplier: 25 };
-    if (hasThreeOfKind && pairs >= 1) return { hand: "Full House", multiplier: 9 };
-    if (isFlush) return { hand: "Flush", multiplier: 6 };
-    if (isStraight) return { hand: "Straight", multiplier: 4 };
-    if (hasThreeOfKind) return { hand: "Three of a Kind", multiplier: 3 };
-    if (pairs >= 2) return { hand: "Two Pair", multiplier: 2 };
-    if (pairs === 1) return { hand: "One Pair", multiplier: 1 };
-    return { hand: "High Card", multiplier: 0 };
+    // Determine hand rank and fixed winnings
+    if (isRoyalFlush) return { hand: "Royal Flush", winnings: 1000 };
+    if (isStraightFlush) return { hand: "Straight Flush", winnings: 50 };
+    if (hasFourOfKind) return { hand: "Four of a Kind", winnings: 40 };
+    if (hasThreeOfKind && pairs >= 1) return { hand: "Full House", winnings: 30 };
+    if (isFlush) return { hand: "Flush", winnings: 20 };
+    if (isStraight) return { hand: "Straight", winnings: 15 };
+    if (hasThreeOfKind) return { hand: "Three of a Kind", winnings: 10 };
+    if (pairs >= 2) return { hand: "Two Pair", winnings: 5 };
+    if (pairs === 1) return { hand: "One Pair", winnings: 2 };
+    return { hand: "High Card", winnings: 1 };
   };
 
   // Deal cards (on button click)
@@ -192,21 +192,20 @@ const PokerTable = () => {
     const combinations = getCombinations(allPlayerCards, 5);
 
     // Evaluate each hand to find the best one
-    let bestHand = { multiplier: 0 };
+    let bestHand = { winnings: 0 };
     combinations.forEach((hand) => {
       const evaluation = evaluateHand(hand);
-      if (evaluation.multiplier > bestHand.multiplier) {
+      if (evaluation.winnings > bestHand.winnings) {
         bestHand = evaluation;
       }
     });
 
     setResult(bestHand.hand);
-    const winAmount = bet * bestHand.multiplier;
+    const winAmount = bestHand.winnings;
     setWinnings(winAmount);
 
     setBank(bank - bet + winAmount);
   };
-
 
   return (
     <div className="poker-table">
