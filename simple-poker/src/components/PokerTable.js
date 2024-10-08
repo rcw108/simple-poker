@@ -14,40 +14,22 @@ const PokerTable = () => {
 	const [telegramUser, setTelegramUser] = useState(null)
 
 	// Initialize Telegram Web App
-	useEffect(() => {
-		const initTelegram = () => {
-			const tg = window.Telegram.WebApp
-			setTelegramUser(tg.initDataUnsafe.user)
+  useEffect(() => {
+    const initTelegram = () => {
+      const tg = window.Telegram.WebApp;
+      setTelegramUser(tg.initDataUnsafe.user);
+    };
 
-			// Optionally, you can send initData to your backend for verification
-			// fetch('/api/verifyUser', {
-			//   method: 'POST',
-			//   headers: { 'Content-Type': 'application/json' },
-			//   body: JSON.stringify({ initData: tg.initData }),
-			// })
-			//   .then((res) => res.json())
-			//   .then((data) => {
-			//     if (data.success) {
-			//       console.log('User verified:', data.user);
-			//     } else {
-			//       alert('Failed to verify Telegram user.');
-			//     }
-			//   })
-			//   .catch((error) => {
-			//     console.error('Error verifying user:', error);
-			//   });
-		}
-
-		if (window.Telegram && window.Telegram.WebApp) {
-			initTelegram()
-		} else {
-			// Load Telegram Web Apps SDK if not already loaded
-			const script = document.createElement('script')
-			script.src = 'https://telegram.org/js/telegram-web-app.js'
-			script.onload = initTelegram
-			document.body.appendChild(script)
-		}
-	}, [])
+    if (window.Telegram && window.Telegram.WebApp) {
+      initTelegram();
+    } else {
+      // Load Telegram Web Apps SDK if not already loaded
+      const script = document.createElement('script');
+      script.src = 'https://telegram.org/js/telegram-web-app.js';
+      script.onload = initTelegram;
+      document.body.appendChild(script);
+    }
+  }, []);
 
 	// Define the mapping for face card ranks
 	const rankMap = {
