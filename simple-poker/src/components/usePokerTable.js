@@ -6,6 +6,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 	const [bet, setBet] = useState(5)
 	const [tableCards, setTableCards] = useState([])
 	const [userCards, setUserCards] = useState([])
+	const [computerCards, setComputerCards] = useState([])
 	const [result, setResult] = useState('')
 	const [winnings, setWinnings] = useState(0)
 
@@ -174,50 +175,70 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		const shuffledDeck = shuffleArray([...allCards])
 
 		const newUserCards = shuffledDeck.slice(0, 2)
-		const newTableCards = shuffledDeck.slice(2, 7)
+		const newComputerCards = shuffledDeck.slice(2, 4) // Карты для компьютера
+		const newTableCards = shuffledDeck.slice(4, 9)
 
 		setUserCards(newUserCards)
+		setComputerCards(newComputerCards) // Устанавливаем карты компьютера
 		setTableCards(newTableCards)
 
-		const allPlayerCards = [...newUserCards, ...newTableCards]
+		const allUserCards = [...newUserCards, ...newTableCards]
+		const allComputerCards = [...newComputerCards, ...newTableCards] // Карты для компьютера с общими картами
 
-		// Generate all possible 5-card combinations
-		const combinations = getCombinations(allPlayerCards, 5)
+		// Генерируем все возможные комбинации 5-карт для пользователя и компьютера
+		const userCombinations = getCombinations(allUserCards, 5)
+		const computerCombinations = getCombinations(allComputerCards, 5)
 
-		// Evaluate each hand to find the best one
-		let bestHand = { winnings: 0 }
-		combinations.forEach(hand => {
+		// Оценка рук
+		let bestUserHand = { winnings: 0 }
+		userCombinations.forEach(hand => {
 			const evaluation = evaluateHand(hand)
-			if (evaluation.winnings > bestHand.winnings) {
-				bestHand = evaluation
+			if (evaluation.winnings > bestUserHand.winnings) {
+				bestUserHand = evaluation
 			}
 		})
 
-		setResult(bestHand.hand)
-		const winAmount = bestHand.winnings
-		setWinnings(winAmount)
+		let bestComputerHand = { winnings: 0 }
+		computerCombinations.forEach(hand => {
+			const evaluation = evaluateHand(hand)
+			if (evaluation.winnings > bestComputerHand.winnings) {
+				bestComputerHand = evaluation
+			}
+		})
 
-		const newBalance = bank - bet + winAmount
+		// Сравнение рук
+		if (bestUserHand.winnings > bestComputerHand.winnings) {
+			setResult(`You win with ${bestUserHand.hand}!`)
+			setWinnings(bestUserHand.winnings)
+		} else if (bestUserHand.winnings < bestComputerHand.winnings) {
+			setResult(`Computer wins with ${bestComputerHand.hand}!`)
+			setWinnings(0) // Вы проиграли, никаких выигрышей
+		} else {
+			setResult(`It's a tie with ${bestUserHand.hand}!`)
+			setWinnings(bestUserHand.winnings) // Вернуть ставку
+		}
+
+		const newBalance = bank - bet + winnings
 		setBank(newBalance)
 
 		// Update balance on backend
-		fetch('/api/updateBalance', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				userId: telegramUser.id,
-				balance: newBalance,
-			}),
-		})
-			.then(res => res.json())
-			.then(data => {
-				if (!data.success) {
-					console.error('Error updating balance:', data.message)
-				}
-			})
-			.catch(error => {
-				console.error('Error updating balance:', error)
-			})
+		// fetch('/api/updateBalance', {
+		// 	method: 'POST',
+		// 	headers: { 'Content-Type': 'application/json' },
+		// 	body: JSON.stringify({
+		// 		userId: telegramUser.id,
+		// 		balance: newBalance,
+		// 	}),
+		// })
+		// 	.then(res => res.json())
+		// 	.then(data => {
+		// 		if (!data.success) {
+		// 			console.error('Error updating balance:', data.message)
+		// 		}
+		// 	})
+		// 	.catch(error => {
+		// 		console.error('Error updating balance:', error)
+		// 	})
 	}
 
 	// Handle withdrawal
@@ -271,5 +292,6 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		evaluateHand,
 		dealCards,
 		handleWithdraw,
+		computerCards,
 	}
 }

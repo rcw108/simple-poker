@@ -29,6 +29,7 @@ const PokerTable = () => {
 		decreaseBet,
 		dealCards,
 		handleWithdraw,
+		computerCards,
 	} = usePokerTable(telegramUser, bank, setBank)
 
 	return (
@@ -49,12 +50,24 @@ const PokerTable = () => {
 						alt='Crown'
 						className='crown-icon'
 					/>
-					<span className='chips'>{bank}</span>
+					<span className='chips'>{bank - 100 < 0 ? 0 : bank - 100}</span>
 				</div>
 			</div>
 
 			{/* Game Section */}
 			<div className='cards-section'>
+				{/* Show computer cards */}
+				<div className='computer-cards'>
+					{computerCards.map((card, index) => (
+						<img
+							key={index}
+							src={card.image}
+							alt={`Computer card ${index}`}
+							className='card'
+						/>
+					))}
+				</div>
+
 				{/* Show table cards */}
 				<div className='table-cards'>
 					{tableCards.map((card, index) => (
