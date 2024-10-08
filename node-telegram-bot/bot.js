@@ -21,7 +21,7 @@ bot.onText(/\/game/, (msg) => {
       [
         {
           text: 'Play Simple Poker',
-          web_app: { url: webAppUrl }
+          login_url: { url: webAppUrl },
         }
       ]
     ]

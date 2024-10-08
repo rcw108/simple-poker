@@ -15,38 +15,50 @@ const PokerTable = () => {
 
   // Initialize Telegram Web App
   useEffect(() => {
-    const initTelegram = () => {
-      const tg = window.Telegram.WebApp;
-      setTelegramUser(tg.initDataUnsafe.user);
-
-      // Optionally, you can send initData to your backend for verification
-      // fetch('/api/verifyUser', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ initData: tg.initData }),
-      // })
-      //   .then((res) => res.json())
-      //   .then((data) => {
-      //     if (data.success) {
-      //       console.log('User verified:', data.user);
-      //     } else {
-      //       alert('Failed to verify Telegram user.');
-      //     }
-      //   })
-      //   .catch((error) => {
-      //     console.error('Error verifying user:', error);
-      //   });
-    };
-
-    if (window.Telegram && window.Telegram.WebApp) {
-      initTelegram();
+    const queryParams = new URLSearchParams(window.location.search);
+    const id = queryParams.get('id');
+    const first_name = queryParams.get('first_name');
+    const last_name = queryParams.get('last_name');
+    const username = queryParams.get('username');
+    const photo_url = queryParams.get('photo_url'); // May be null
+    const auth_date = queryParams.get('auth_date');
+    const hash = queryParams.get('hash');
+  
+    if (id && first_name && auth_date && hash) {
+      setTelegramUser({
+        id,
+        first_name,
+        last_name,
+        username,
+        photo_url,
+        auth_date,
+        hash,
+      });
     } else {
-      // Load Telegram Web Apps SDK if not already loaded
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-web-app.js';
-      script.onload = initTelegram;
-      document.body.appendChild(script);
+      // Handle the case where user data is not available
+      console.warn('Telegram user data not found in URL parameters.');
     }
+  
+    // Optionally, send the full query string to your backend for verification
+    // const initData = window.location.search.substring(1); // Remove the '?'
+    // fetch('/api/verifyUser', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ initData }),
+    // })
+    // .then(res => res.json())
+    // .then(data => {
+    //   if (data.success) {
+    //     // User is verified
+    //     console.log('User verified:', data.user);
+    //   } else {
+    //     // Verification failed
+    //     alert('Failed to verify Telegram user.');
+    //   }
+    // })
+    // .catch((error) => {
+    //   console.error('Error verifying user:', error);
+    // });
   }, []);
 
   // Define the mapping for face card ranks
@@ -251,11 +263,14 @@ const PokerTable = () => {
     <div className="poker-table">
      {/* Display Telegram User Info */}
      {telegramUser && (
-        <div className="user-info">
+      <div className="user-info">
+        {/* Only display the photo if available */}
+        {telegramUser.photo_url && (
           <img src={telegramUser.photo_url} alt="User" className="user-photo" />
-          <span>Welcome, {telegramUser.first_name}!</span>
-        </div>
-      )}
+        )}
+        <span>Welcome, {telegramUser.first_name}!</span>
+      </div>
+    )}
       {/* Header Section */}
       <div className="header">
         <img src="/assets/cardsgroup.png" alt="Cards" className="cards-header" />
