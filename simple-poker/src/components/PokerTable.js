@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './PokerTable.css';
 
 const PokerTable = () => {
@@ -9,6 +9,45 @@ const PokerTable = () => {
   const [userCards, setUserCards] = useState([]);
   const [result, setResult] = useState("");
   const [winnings, setWinnings] = useState(0);
+
+  // New state variable for Telegram user
+  const [telegramUser, setTelegramUser] = useState(null);
+
+  // Initialize Telegram Web App
+  useEffect(() => {
+    const initTelegram = () => {
+      const tg = window.Telegram.WebApp;
+      setTelegramUser(tg.initDataUnsafe.user);
+
+      // Optionally, you can send initData to your backend for verification
+      // fetch('/api/verifyUser', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ initData: tg.initData }),
+      // })
+      //   .then((res) => res.json())
+      //   .then((data) => {
+      //     if (data.success) {
+      //       console.log('User verified:', data.user);
+      //     } else {
+      //       alert('Failed to verify Telegram user.');
+      //     }
+      //   })
+      //   .catch((error) => {
+      //     console.error('Error verifying user:', error);
+      //   });
+    };
+
+    if (window.Telegram && window.Telegram.WebApp) {
+      initTelegram();
+    } else {
+      // Load Telegram Web Apps SDK if not already loaded
+      const script = document.createElement('script');
+      script.src = 'https://telegram.org/js/telegram-web-app.js';
+      script.onload = initTelegram;
+      document.body.appendChild(script);
+    }
+  }, []);
 
   // Define the mapping for face card ranks
   const rankMap = {
@@ -207,8 +246,16 @@ const PokerTable = () => {
     setBank(bank - bet + winAmount);
   };
 
+
   return (
     <div className="poker-table">
+     {/* Display Telegram User Info */}
+     {telegramUser && (
+        <div className="user-info">
+          <img src={telegramUser.photo_url} alt="User" className="user-photo" />
+          <span>Welcome, {telegramUser.first_name}!</span>
+        </div>
+      )}
       {/* Header Section */}
       <div className="header">
         <img src="/assets/cardsgroup.png" alt="Cards" className="cards-header" />
