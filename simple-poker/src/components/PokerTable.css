@@ -190,6 +190,7 @@ body {
 	align-items: center;
 	margin-top: 150px; /* Adjust to leave space for the header */
 	gap: 20px;
+	height: 358px;
 }
 
 .table-cards,
@@ -222,6 +223,8 @@ body {
 	align-items: center;
 	padding: 20px;
 	margin-bottom: 30px;
+	min-height: 165px;
+	max-height: 165px;
 }
 
 /* Bank and Bet with centered values */
@@ -254,7 +257,7 @@ body {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%) !important;
 	font-weight: bold;
 	color: #000;
 	font-size: 10px;
@@ -268,13 +271,24 @@ body {
 }
 
 /* Deal Button */
-.deal-button {
+.deal-button,
+.new-game-button {
 	background-color: yellow;
 	border: none;
-	padding: 10px 40px;
-	font-size: 18px;
+	height: 35px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-size: 16px;
+	width: 150px;
 	cursor: pointer;
 	margin: 0 20px;
+	transition: all 0.3s ease-in-out;
+}
+
+.deal-button:hover,
+.new-game-button:hover {
+	background-color: #1feb95;
 }
 
 /* Bet Controls for + and - */
