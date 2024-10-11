@@ -11,7 +11,7 @@ const PokerTable = () => {
 	const cardVariants = {
 		initial: {
 			opacity: 0,
-			y: -300,
+			y: '-100vh',
 			left: '50%',
 			rotate: 0,
 			scale: 0.5,
@@ -22,9 +22,15 @@ const PokerTable = () => {
 			rotate: 360,
 			scale: 1,
 			transition: {
-				duration: 0.6,
+				duration: 0.8,
 				delay: index * 0.1,
 				ease: 'easeInOut',
+			},
+			exit: {
+				opacity: 1,
+				rotateX: 180,
+				scale: 1,
+				transition: { duration: 0.6 },
 			},
 		}),
 	}
@@ -145,6 +151,7 @@ const PokerTable = () => {
 						exit='exit'
 						variants={fadeVariants}
 						transition={{ duration: 0.5 }}
+						className='cards-wrap'
 					>
 						<div className='cards-section'>
 							<AnimatePresence mode='wait'>
@@ -159,7 +166,7 @@ const PokerTable = () => {
 												custom={index}
 												initial='initial'
 												animate='animate'
-												exit='initial'
+												exit='exit'
 												variants={cardVariants}
 											/>
 										))}
@@ -167,19 +174,52 @@ const PokerTable = () => {
 								)}
 							</AnimatePresence>
 
-							<div className='table-cards'>
-								{tableCards.map((card, index) => (
-									<motion.img
-										key={index}
-										src={card.image}
-										alt={`Table card ${index}`}
-										className='card'
-										custom={index}
-										initial='initial'
-										animate='animate'
-										variants={cardVariants}
-									/>
-								))}
+							<div>
+								<AnimatePresence mode='wait'>
+									{result && (
+										<motion.div
+											className='flash-text'
+											initial={{ opacity: 0, scale: 0.5 }}
+											animate={{ opacity: 1, scale: 1 }}
+											exit={{ opacity: 0, scale: 0.5 }}
+											transition={{ duration: 0.3 }}
+										>
+											{result}
+										</motion.div>
+									)}
+								</AnimatePresence>
+
+								<AnimatePresence mode='wait'>
+									{gameStage !== 'initial' && gameStage !== 'betting' && (
+										<motion.div
+											className='win-text'
+											initial={{ opacity: 0, y: 20 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -20 }}
+											transition={{ duration: 0.3 }}
+										>
+											WIN {winnings}
+										</motion.div>
+									)}
+								</AnimatePresence>
+
+								<AnimatePresence mode='wait'>
+									<div className='table-cards'>
+										{tableCards.map((card, index) => (
+											<motion.img
+												key={index}
+												src={card.image}
+												alt={`Table card ${index}`}
+												className='card'
+												custom={index}
+												initial='initial'
+												animate='animate'
+												exit='exit'
+												variants={cardVariants}
+											/>
+										))}
+									</div>
+								</AnimatePresence>
 							</div>
 
 							<div className='user-cards'>
@@ -196,34 +236,6 @@ const PokerTable = () => {
 									/>
 								))}
 							</div>
-
-							<AnimatePresence mode='wait'>
-								{result && (
-									<motion.div
-										className='flash-text'
-										initial={{ opacity: 0, scale: 0.5 }}
-										animate={{ opacity: 1, scale: 1 }}
-										exit={{ opacity: 0, scale: 0.5 }}
-										transition={{ duration: 0.3 }}
-									>
-										{result}
-									</motion.div>
-								)}
-							</AnimatePresence>
-
-							<AnimatePresence mode='wait'>
-								{gameStage !== 'initial' && gameStage !== 'betting' && (
-									<motion.div
-										className='win-text'
-										initial={{ opacity: 0, y: 20 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -20 }}
-										transition={{ duration: 0.3 }}
-									>
-										WIN {winnings}
-									</motion.div>
-								)}
-							</AnimatePresence>
 						</div>
 					</motion.div>
 				)}
@@ -249,7 +261,10 @@ const PokerTable = () => {
 							{bank}
 						</motion.div>
 					</div>
-					<div className='bank-text'>Банк</div>
+					<div className='bank-text'>Баланс</div>
+					<div className='add-balance'>
+						<span>+</span>
+					</div>
 				</div>
 
 				{gameStage === 'initial' && (
@@ -395,7 +410,7 @@ const PokerTable = () => {
 				)}
 			</motion.div>
 
-			<motion.div
+			{/* <motion.div
 				className='deposit-section'
 				initial='hidden'
 				animate='visible'
@@ -436,7 +451,7 @@ const PokerTable = () => {
 					/>
 					<button type='submit'>Withdraw</button>
 				</form>
-			</motion.div>
+			</motion.div> */}
 		</div>
 	)
 }
