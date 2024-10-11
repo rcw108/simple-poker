@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 html,
 body {
 	overflow-x: hidden; /* Prevent horizontal scrolling */
@@ -16,7 +18,7 @@ body {
 .reveal-button,
 .new-game-button {
 	cursor: pointer;
-	background-color: yellow;
+	background-color: #ffe100;
 	width: 150px;
 	display: flex;
 	justify-content: center;
@@ -43,7 +45,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	background-color: yellow;
+	background-color: #ffe100;
 	position: relative;
 	cursor: pointer;
 	pointer-events: none;
@@ -120,7 +122,6 @@ body {
 	border-radius: 10px;
 	width: 350px;
 	height: 358px;
-	background-color: #1e1e1e;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -179,18 +180,17 @@ body {
 
 .chips {
 	font-size: 18px;
-	color: yellow;
+	color: #ffe100;
 }
 
 /* Cards Section */
 .cards-section {
 	display: flex;
 	flex-direction: column;
-	justify-content: center;
+	justify-content: space-between;
 	align-items: center;
-	margin-top: 150px; /* Adjust to leave space for the header */
-	gap: 20px;
-	height: 358px;
+	gap: 40px;
+	height: 100%;
 }
 
 .table-cards,
@@ -201,8 +201,8 @@ body {
 }
 
 .card {
-	width: 50px;
-	height: 70px; /* Adjust the size as per your design */
+	width: 70px;
+	height: 100px; /* Adjust the size as per your design */
 	object-fit: contain;
 }
 
@@ -213,27 +213,17 @@ body {
 .win-text {
 	font-size: 30px;
 	font-weight: bold;
-	color: yellow;
+	color: #ffe100;
 }
 
 /* Controls Section */
 .controls {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
 	padding: 20px;
 	margin-bottom: 30px;
 	min-height: 165px;
 	max-height: 165px;
-}
-
-/* Bank and Bet with centered values */
-.bank,
-.bet {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
 }
 
 .bank-icon-container,
@@ -250,6 +240,7 @@ body {
 .bet-icon {
 	width: 100%;
 	height: auto;
+	object-fit: contain;
 }
 
 .bank-value,
@@ -272,15 +263,22 @@ body {
 
 /* Deal Button */
 .deal-button,
+.new-game-button,
+.reveal-button,
 .new-game-button {
-	background-color: yellow;
+	background-color: #ffe100;
 	border: none;
-	height: 35px;
+	height: 50px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	font-size: 16px;
-	width: 150px;
+	font-family: 'Inter', sans-serif;
+	font-size: 18px;
+	font-weight: 500;
+	padding: 0 10px;
+	width: 170px;
+	border: 2px solid #fff;
+	border-radius: 12px;
 	cursor: pointer;
 	margin: 0 20px;
 	transition: all 0.3s ease-in-out;
@@ -299,7 +297,8 @@ body {
 
 .bet-minus,
 .bet-plus {
-	background-color: yellow;
+	background-color: rgba(255, 255, 255, 0.34);
+	color: #fff;
 	border: none;
 	font-size: 22px;
 	width: 30px;
@@ -321,15 +320,41 @@ body {
 	background-color: #1feb95;
 }
 
+.add-balance {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.7);
+	border: 2px solid #000;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: #000;
+	margin: 0 auto;
+	margin-top: 5px;
+}
+
+.flash-text,
+.win-text {
+	text-align: center;
+	font-family: Helvetica, sans-serif;
+}
+
+.win-text {
+	margin-bottom: 30px;
+}
+
+.cards-wrap {
+	height: 100%;
+}
+
 /* Adjust layout for mobile screens */
 @media (max-width: 600px) {
 	.controls {
 		flex-direction: row; /* Change to row to align items in a row */
-		justify-content: space-around; /* Spread out controls evenly */
-		align-items: center;
-		width: 100%;
-		padding: 10px;
 		margin-bottom: 20px;
+		min-height: 145px;
+		max-height: 145px;
 	}
 
 	.bank,
@@ -340,5 +365,33 @@ body {
 	.deal-button {
 		margin: 0;
 		padding: 10px 20px;
+	}
+
+	.cards-section {
+		margin-top: 0;
+		height: 100%;
+		justify-content: space-between;
+	}
+
+	.card {
+		width: 70px;
+		height: 100px;
+	}
+
+	.flash-text {
+		margin-bottom: 20px;
+		text-align: center;
+		font-size: 40px;
+	}
+	.win-text {
+		font-size: 40px;
+		margin-bottom: 60px;
+		text-align: center;
+	}
+
+	.table-cards,
+	.user-cards,
+	.computer-cards {
+		justify-content: center;
 	}
 }
