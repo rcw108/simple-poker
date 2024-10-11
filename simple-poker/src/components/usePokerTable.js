@@ -241,12 +241,6 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		setWinnings(newWinnings)
 		setBank(prevBank => {
 			const newBalance = prevBank - bet + newWinnings
-			console.log(
-				`Предыдущий баланс: ${prevBank}`,
-				`Ставка: ${bet}`,
-				`Выигрыш: ${newWinnings}`,
-				`Новый баланс: ${newBalance}`
-			)
 			return newBalance
 		})
 	}

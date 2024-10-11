@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import React, { useState } from 'react'
 import { TelegramUser } from '../ui/telegramUser/TelegramUser'
 import './PokerTable.css'
@@ -6,6 +7,33 @@ import { useTelegram } from './useTelegram'
 
 const PokerTable = () => {
 	const [bank, setBank] = useState(100)
+
+	const cardVariants = {
+		initial: {
+			opacity: 0,
+			y: -300,
+			left: '50%',
+			rotate: 0,
+			scale: 0.5,
+		},
+		animate: index => ({
+			opacity: 1,
+			y: 0,
+			rotate: 360,
+			scale: 1,
+			transition: {
+				duration: 0.6,
+				delay: index * 0.1,
+				ease: 'easeInOut',
+			},
+		}),
+	}
+
+	const fadeVariants = {
+		hidden: { opacity: 0 },
+		visible: { opacity: 1 },
+		exit: { opacity: 0 },
+	}
 
 	const {
 		telegramUser,
@@ -69,178 +97,325 @@ const PokerTable = () => {
 		<div className='poker-table'>
 			{telegramUser && <TelegramUser telegramUser={telegramUser} />}
 
-			<div className='header'>
+			<motion.div
+				className='header'
+				initial='hidden'
+				animate='visible'
+				variants={fadeVariants}
+				transition={{ duration: 0.5 }}
+			>
 				<div className='crown-section'>
 					<img
 						src='/assets/icons8-crown-96 1.png'
 						alt='Crown'
 						className='crown-icon'
 					/>
-					<span className='chips'>{bank - 100 < 0 ? 0 : bank - 100}</span>
+					<motion.span
+						className='chips'
+						key={bank}
+						initial={{ scale: 1.2, opacity: 0 }}
+						animate={{ scale: 1, opacity: 1 }}
+						transition={{ duration: 0.3 }}
+					>
+						{bank - 100 < 0 ? 0 : bank - 100}
+					</motion.span>
 				</div>
-			</div>
+			</motion.div>
 
-			{!gameStarted ? (
-				<div className='logo-screen-container'>
-					<div className='logo-screen'>
-						<img src='/assets/first-logo.png' alt='logo' />
-					</div>
-				</div>
-			) : (
-				<>
-					<div className='cards-section'>
-						{gameStage !== 'initial' && (
-							<div className='computer-cards'>
-								{computerCards.map((card, index) => (
-									<img
+			<AnimatePresence mode='wait'>
+				{!gameStarted ? (
+					<motion.div
+						className='logo-screen-container'
+						key='logo-screen'
+						initial='hidden'
+						animate='visible'
+						exit='exit'
+						variants={fadeVariants}
+						transition={{ duration: 0.5 }}
+					>
+						<div className='logo-screen'>
+							<motion.img src='/assets/first-logo.png' alt='logo' />
+						</div>
+					</motion.div>
+				) : (
+					<motion.div
+						key='game-screen'
+						initial='hidden'
+						animate='visible'
+						exit='exit'
+						variants={fadeVariants}
+						transition={{ duration: 0.5 }}
+					>
+						<div className='cards-section'>
+							<AnimatePresence mode='wait'>
+								{gameStage !== 'initial' && (
+									<div className='computer-cards'>
+										{computerCards.map((card, index) => (
+											<motion.img
+												key={index}
+												src={card.image}
+												alt={`Computer card ${index}`}
+												className='card'
+												custom={index}
+												initial='initial'
+												animate='animate'
+												exit='initial'
+												variants={cardVariants}
+											/>
+										))}
+									</div>
+								)}
+							</AnimatePresence>
+
+							<div className='table-cards'>
+								{tableCards.map((card, index) => (
+									<motion.img
 										key={index}
 										src={card.image}
-										alt={`Computer card ${index}`}
+										alt={`Table card ${index}`}
 										className='card'
+										custom={index}
+										initial='initial'
+										animate='animate'
+										variants={cardVariants}
 									/>
 								))}
 							</div>
-						)}
 
-						<div className='table-cards'>
-							{tableCards.map((card, index) => (
-								<img
-									key={index}
-									src={card.image}
-									alt={`Table card ${index}`}
-									className='card'
-								/>
-							))}
+							<div className='user-cards'>
+								{userCards.map((card, index) => (
+									<motion.img
+										key={index}
+										src={card.image}
+										alt={`User card ${index}`}
+										className='card'
+										custom={index}
+										initial='initial'
+										animate='animate'
+										variants={cardVariants}
+									/>
+								))}
+							</div>
+
+							<AnimatePresence mode='wait'>
+								{result && (
+									<motion.div
+										className='flash-text'
+										initial={{ opacity: 0, scale: 0.5 }}
+										animate={{ opacity: 1, scale: 1 }}
+										exit={{ opacity: 0, scale: 0.5 }}
+										transition={{ duration: 0.3 }}
+									>
+										{result}
+									</motion.div>
+								)}
+							</AnimatePresence>
+
+							<AnimatePresence mode='wait'>
+								{gameStage !== 'initial' && gameStage !== 'betting' && (
+									<motion.div
+										className='win-text'
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										exit={{ opacity: 0, y: -20 }}
+										transition={{ duration: 0.3 }}
+									>
+										WIN {winnings}
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 
-						<div className='user-cards'>
-							{userCards.map((card, index) => (
-								<img
-									key={index}
-									src={card.image}
-									alt={`User card ${index}`}
-									className='card'
-								/>
-							))}
-						</div>
-
-						<div className='flash-text'>{result}</div>
-						{gameStage !== 'initial' && gameStage !== 'betting' && (
-							<div className='win-text'>WIN {winnings}</div>
-						)}
-					</div>
-				</>
-			)}
-
-			<div className='controls'>
+			<motion.div
+				className='controls'
+				initial='hidden'
+				animate='visible'
+				variants={fadeVariants}
+				transition={{ duration: 0.5, delay: 0.2 }}
+			>
 				<div className='bank'>
 					<div className='bank-icon-container'>
 						<img src='/assets/chip.png' alt='Chips' className='bank-icon' />
-						<div className='bank-value'>{bank}</div>
+						<motion.div
+							className='bank-value'
+							key={bank}
+							initial={{ scale: 1.2, opacity: 0 }}
+							animate={{ scale: 1, opacity: 1 }}
+							transition={{ duration: 0.3 }}
+						>
+							{bank}
+						</motion.div>
 					</div>
 					<div className='bank-text'>Банк</div>
 				</div>
 
 				{gameStage === 'initial' && (
 					<>
-						<button className='deal-button' onClick={dealInitialCards}>
-							Раздать
-						</button>
-						<div className='bet'>
-							<div className='bet-icon-container'>
-								<img
-									src='/assets/PokerChip2.png'
-									alt='Bet'
-									className='bet-icon'
-								/>
-								<div className='bet-value'>{bet}</div>
-							</div>
-							<div className='bet-text'>Ставка</div>
-							<div className='bet-controls'>
-								<button className='bet-minus' onClick={decreaseBet}>
-									-
+						<AnimatePresence mode='wait'>
+							<motion.div
+								key='initial-controls'
+								initial='hidden'
+								animate='visible'
+								exit='exit'
+								variants={fadeVariants}
+								transition={{ duration: 0.3 }}
+							>
+								<button className='deal-button' onClick={dealInitialCards}>
+									Раздать
 								</button>
-								<button className='bet-plus' onClick={increaseBet}>
-									+
-								</button>
-							</div>
-						</div>
+							</motion.div>
+						</AnimatePresence>
+
+						<AnimatePresence mode='wait'>
+							<motion.div
+								key='initial-controls'
+								initial='hidden'
+								animate='visible'
+								exit='exit'
+								variants={fadeVariants}
+								transition={{ duration: 0.3 }}
+							>
+								<div className='bet'>
+									<div className='bet-icon-container'>
+										<img
+											src='/assets/PokerChip2.png'
+											alt='Bet'
+											className='bet-icon'
+										/>
+										<motion.div
+											className='bet-value'
+											key={bet}
+											initial={{ scale: 1.2, opacity: 0 }}
+											animate={{ scale: 1, opacity: 1 }}
+											transition={{ duration: 0.3 }}
+										>
+											{bet}
+										</motion.div>
+									</div>
+									<div className='bet-text'>Ставка</div>
+									<div className='bet-controls'>
+										<button className='bet-minus' onClick={decreaseBet}>
+											-
+										</button>
+										<button className='bet-plus' onClick={increaseBet}>
+											+
+										</button>
+									</div>
+								</div>
+							</motion.div>
+						</AnimatePresence>
 					</>
 				)}
 
 				{gameStage === 'betting' && (
 					<>
-						<div>
-							<button className='reveal-button' onClick={revealCards}>
-								Вскрыть карты
-							</button>
-							<div className='up-down' style={{ backgroundColor: upDown }}>
-								<span
-									className='down'
-									onClick={decreaseBet}
-									onMouseLeave={e => setUpDown('')}
-									onMouseEnter={e => setUpDown('rgb(215, 50, 50)')}
-								>
-									<span className='icon-minus'>
-										<span>-</span>
-									</span>
-								</span>
-								<span className='up-down-text'>Поднять</span>
-								<span
-									className='up'
-									onClick={increaseBet}
-									onMouseLeave={e => setUpDown('')}
-									onMouseEnter={e => setUpDown('#1FEB95')}
-								>
-									<span className='icon-plus'>
-										<span>+</span>
-									</span>
-								</span>
-							</div>
-						</div>
-						<div className='bet'>
-							<div className='bet-icon-container'>
-								<img
-									src='/assets/PokerChip2.png'
-									alt='Bet'
-									className='bet-icon'
-								/>
-								<div className='bet-value'>{bet}</div>
-							</div>
-							<div className='bet-text'>Ставка</div>
-							<div className='bet-controls'>
-								<button className='bet-minus' onClick={decreaseBet}>
-									-
-								</button>
-								<button className='bet-plus' onClick={increaseBet}>
-									+
+						<motion.div
+							key='betting-controls'
+							initial='hidden'
+							animate='visible'
+							exit='exit'
+							variants={fadeVariants}
+							transition={{ duration: 0.3 }}
+						>
+							<div>
+								<button className='reveal-button' onClick={revealCards}>
+									Вскрыть карты
 								</button>
 							</div>
-						</div>
+						</motion.div>
+						<motion.div
+							key='betting-controls-2'
+							initial='hidden'
+							animate='visible'
+							exit='exit'
+							variants={fadeVariants}
+							transition={{ duration: 0.3 }}
+						>
+							<div className='bet'>
+								<div className='bet-icon-container'>
+									<img
+										src='/assets/PokerChip2.png'
+										alt='Bet'
+										className='bet-icon'
+									/>
+									<motion.div
+										className='bet-value'
+										key={bet}
+										initial={{ scale: 1.2, opacity: 0 }}
+										animate={{ scale: 1, opacity: 1 }}
+										transition={{ duration: 0.3 }}
+									>
+										{bet}
+									</motion.div>
+								</div>
+								<div className='bet-text'>Ставка</div>
+								<div className='bet-controls'>
+									<button className='bet-minus' onClick={decreaseBet}>
+										-
+									</button>
+									<button className='bet-plus' onClick={increaseBet}>
+										+
+									</button>
+								</div>
+							</div>
+						</motion.div>
 					</>
 				)}
 
 				{gameStage === 'reveal' && (
-					<>
-						<button className='new-game-button' onClick={startNewGame}>
-							Новая игра
-						</button>
-						<div>
-							<div className='dummy'></div>
-						</div>
-					</>
+					<AnimatePresence mode='wait'>
+						<motion.div
+							key='reveal-controls'
+							initial='hidden'
+							animate='visible'
+							exit='exit'
+							variants={fadeVariants}
+							transition={{ duration: 0.3 }}
+						>
+							<button className='new-game-button' onClick={startNewGame}>
+								Новая игра
+							</button>
+						</motion.div>
+						<motion.div
+							key='reveal-controls-2'
+							initial='hidden'
+							animate='visible'
+							exit='exit'
+							variants={fadeVariants}
+							transition={{ duration: 0.3 }}
+						>
+							<div>
+								<div className='dummy'></div>
+							</div>
+						</motion.div>
+					</AnimatePresence>
 				)}
-			</div>
+			</motion.div>
 
-			<div className='deposit-section'>
+			<motion.div
+				className='deposit-section'
+				initial='hidden'
+				animate='visible'
+				variants={fadeVariants}
+				transition={{ duration: 0.5, delay: 0.4 }}
+			>
 				<h3>Deposit TON Coins</h3>
 				<p>Send TON coins to the following address:</p>
 				<code>{depositAddress}</code>
 				<p>Include this comment in your transaction:</p>
 				<code>{depositComment}</code>
-			</div>
+			</motion.div>
 
-			<div className='withdrawal-section'>
+			<motion.div
+				className='withdrawal-section'
+				initial='hidden'
+				animate='visible'
+				variants={fadeVariants}
+				transition={{ duration: 0.5, delay: 0.6 }}
+			>
 				<h3>Withdraw Funds</h3>
 				<form onSubmit={handleWithdraw}>
 					<input
@@ -261,7 +436,7 @@ const PokerTable = () => {
 					/>
 					<button type='submit'>Withdraw</button>
 				</form>
-			</div>
+			</motion.div>
 		</div>
 	)
 }
