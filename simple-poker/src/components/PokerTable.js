@@ -1,5 +1,3 @@
-// PokerTable.js
-
 import React, { useState } from 'react'
 import { TelegramUser } from '../ui/telegramUser/TelegramUser'
 import './PokerTable.css'
@@ -23,27 +21,55 @@ const PokerTable = () => {
 		bet,
 		tableCards,
 		userCards,
+		computerCards,
 		result,
 		winnings,
 		increaseBet,
 		decreaseBet,
-		dealCards,
-		handleWithdraw,
-		computerCards,
+		dealInitialCards,
+		revealCards,
+		startNewGame,
+		gameStarted,
+		gameStage,
 	} = usePokerTable(telegramUser, bank, setBank)
+
+	const handleWithdraw = e => {
+		e.preventDefault()
+
+		fetch('/api/withdraw', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				userId: telegramUser.id,
+				amount: withdrawAmount,
+				toAddress: withdrawAddress,
+			}),
+		})
+			.then(res => res.json())
+			.then(data => {
+				if (data.success) {
+					alert('Withdrawal processed!')
+					// Update balance on frontend
+					const newBalance = bank - parseFloat(withdrawAmount)
+					setBank(newBalance)
+					setWithdrawAmount('')
+					setWithdrawAddress('')
+				} else {
+					alert(`Error: ${data.message}`)
+				}
+			})
+			.catch(error => {
+				console.error('Error processing withdrawal:', error)
+			})
+	}
+
+	const [upDown, setUpDown] = useState('')
 
 	return (
 		<div className='poker-table'>
-			{/* Display Telegram User Info */}
 			{telegramUser && <TelegramUser telegramUser={telegramUser} />}
 
-			{/* Header Section */}
 			<div className='header'>
-				<img
-					src='/assets/cardsgroup.png'
-					alt='Cards'
-					className='cards-header'
-				/>
 				<div className='crown-section'>
 					<img
 						src='/assets/icons8-crown-96 1.png'
@@ -54,85 +80,158 @@ const PokerTable = () => {
 				</div>
 			</div>
 
-			{/* Game Section */}
-			<div className='cards-section'>
-				{/* Show computer cards */}
-				<div className='computer-cards'>
-					{computerCards.map((card, index) => (
-						<img
-							key={index}
-							src={card.image}
-							alt={`Computer card ${index}`}
-							className='card'
-						/>
-					))}
+			{!gameStarted ? (
+				<div className='logo-screen-container'>
+					<div className='logo-screen'>
+						<img src='/assets/first-logo.png' alt='logo' />
+					</div>
 				</div>
+			) : (
+				<>
+					<div className='cards-section'>
+						{gameStage !== 'initial' && (
+							<div className='computer-cards'>
+								{computerCards.map((card, index) => (
+									<img
+										key={index}
+										src={card.image}
+										alt={`Computer card ${index}`}
+										className='card'
+									/>
+								))}
+							</div>
+						)}
 
-				{/* Show table cards */}
-				<div className='table-cards'>
-					{tableCards.map((card, index) => (
-						<img
-							key={index}
-							src={card.image}
-							alt={`Table card ${index}`}
-							className='card'
-						/>
-					))}
-				</div>
+						<div className='table-cards'>
+							{tableCards.map((card, index) => (
+								<img
+									key={index}
+									src={card.image}
+									alt={`Table card ${index}`}
+									className='card'
+								/>
+							))}
+						</div>
 
-				{/* Show user cards */}
-				<div className='user-cards'>
-					{userCards.map((card, index) => (
-						<img
-							key={index}
-							src={card.image}
-							alt={`User card ${index}`}
-							className='card'
-						/>
-					))}
-				</div>
+						<div className='user-cards'>
+							{userCards.map((card, index) => (
+								<img
+									key={index}
+									src={card.image}
+									alt={`User card ${index}`}
+									className='card'
+								/>
+							))}
+						</div>
 
-				{/* Flash text and win result */}
-				<div className='flash-text'>{result}</div>
-				<div className='win-text'>WIN {winnings}</div>
-			</div>
+						<div className='flash-text'>{result}</div>
+						{gameStage !== 'initial' && gameStage !== 'betting' && (
+							<div className='win-text'>WIN {winnings}</div>
+						)}
+					</div>
+				</>
+			)}
 
-			{/* Controls Section */}
 			<div className='controls'>
 				<div className='bank'>
 					<div className='bank-icon-container'>
-						<img
-							src='/assets/PokerChips1.png'
-							alt='Chips'
-							className='bank-icon'
-						/>
+						<img src='/assets/chip.png' alt='Chips' className='bank-icon' />
 						<div className='bank-value'>{bank}</div>
 					</div>
 					<div className='bank-text'>Банк</div>
 				</div>
 
-				<button className='deal-button' onClick={dealCards}>
-					Раздать
-				</button>
+				{gameStage === 'initial' && (
+					<>
+						<button className='deal-button' onClick={dealInitialCards}>
+							Раздать
+						</button>
+						<div className='bet'>
+							<div className='bet-icon-container'>
+								<img
+									src='/assets/PokerChip2.png'
+									alt='Bet'
+									className='bet-icon'
+								/>
+								<div className='bet-value'>{bet}</div>
+							</div>
+							<div className='bet-text'>Ставка</div>
+							<div className='bet-controls'>
+								<button className='bet-minus' onClick={decreaseBet}>
+									-
+								</button>
+								<button className='bet-plus' onClick={increaseBet}>
+									+
+								</button>
+							</div>
+						</div>
+					</>
+				)}
 
-				<div className='bet'>
-					<div className='bet-icon-container'>
-						<img src='/assets/PokerChip2.png' alt='Bet' className='bet-icon' />
-						<div className='bet-value'>{bet}</div>
-					</div>
-					<div className='bet-text'>Ставка</div>
-					<div className='bet-controls'>
-						<button className='bet-minus' onClick={decreaseBet}>
-							-
+				{gameStage === 'betting' && (
+					<>
+						<div>
+							<button className='reveal-button' onClick={revealCards}>
+								Вскрыть карты
+							</button>
+							<div className='up-down' style={{ backgroundColor: upDown }}>
+								<span
+									className='down'
+									onClick={decreaseBet}
+									onMouseLeave={e => setUpDown('')}
+									onMouseEnter={e => setUpDown('rgb(215, 50, 50)')}
+								>
+									<span className='icon-minus'>
+										<span>-</span>
+									</span>
+								</span>
+								<span className='up-down-text'>Поднять</span>
+								<span
+									className='up'
+									onClick={increaseBet}
+									onMouseLeave={e => setUpDown('')}
+									onMouseEnter={e => setUpDown('#1FEB95')}
+								>
+									<span className='icon-plus'>
+										<span>+</span>
+									</span>
+								</span>
+							</div>
+						</div>
+						<div className='bet'>
+							<div className='bet-icon-container'>
+								<img
+									src='/assets/PokerChip2.png'
+									alt='Bet'
+									className='bet-icon'
+								/>
+								<div className='bet-value'>{bet}</div>
+							</div>
+							<div className='bet-text'>Ставка</div>
+							<div className='bet-controls'>
+								<button className='bet-minus' onClick={decreaseBet}>
+									-
+								</button>
+								<button className='bet-plus' onClick={increaseBet}>
+									+
+								</button>
+							</div>
+						</div>
+					</>
+				)}
+
+				{gameStage === 'reveal' && (
+					<>
+						<button className='new-game-button' onClick={startNewGame}>
+							Новая игра
 						</button>
-						<button className='bet-plus' onClick={increaseBet}>
-							+
-						</button>
-					</div>
-				</div>
+						<div>
+							<div className='dummy'></div>
+						</div>
+					</>
+				)}
 			</div>
 
-			{/* Deposit Section */}
 			<div className='deposit-section'>
 				<h3>Deposit TON Coins</h3>
 				<p>Send TON coins to the following address:</p>
@@ -141,7 +240,6 @@ const PokerTable = () => {
 				<code>{depositComment}</code>
 			</div>
 
-			{/* Withdrawal Section */}
 			<div className='withdrawal-section'>
 				<h3>Withdraw Funds</h3>
 				<form onSubmit={handleWithdraw}>
