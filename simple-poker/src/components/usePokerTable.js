@@ -2,18 +2,25 @@ import { useState } from 'react'
 import { rankMap, ranks, suits } from './poker.data'
 
 export const usePokerTable = (telegramUser, bank, setBank) => {
-	// Initialize state variables
+	const [gameStarted, setGameStarted] = useState(false)
 	const [bet, setBet] = useState(5)
 	const [tableCards, setTableCards] = useState([])
 	const [userCards, setUserCards] = useState([])
 	const [computerCards, setComputerCards] = useState([])
 	const [result, setResult] = useState('')
 	const [winnings, setWinnings] = useState(0)
+	const [gameStage, setGameStage] = useState('initial') // 'initial', 'betting', 'reveal'
 
 	const [withdrawAmount, setWithdrawAmount] = useState('')
 	const [withdrawAddress, setWithdrawAddress] = useState('')
 
 	const allCards = []
+
+	const emptyCard = {
+		rank: 'unknown',
+		suit: 'Empty',
+		image: '/assets/cards/empty.png',
+	}
 
 	// Build the allCards array
 	suits.forEach(suit => {
@@ -37,17 +44,14 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		})
 	})
 
-	// Increase the bet
 	const increaseBet = () => {
 		if (bet < bank) setBet(bet + 5)
 	}
 
-	// Decrease the bet
 	const decreaseBet = () => {
 		if (bet > 5) setBet(bet - 5)
 	}
 
-	// Shuffle array of cards
 	const shuffleArray = array => {
 		const shuffled = [...array]
 		for (let i = shuffled.length - 1; i > 0; i--) {
@@ -57,7 +61,6 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		return shuffled
 	}
 
-	// Function to get all combinations of a certain size
 	const getCombinations = (array, size) => {
 		const results = []
 
@@ -75,10 +78,9 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		return results
 	}
 
-	// Evaluate hand function
 	const evaluateHand = cards => {
 		// Sort cards by rank
-		const sortedCards = cards.slice().sort((a, b) => a.rank - b.rank)
+		const sortedCards = cards.slice().sort((a, b) => b.rank - a.rank)
 
 		// Check for Flush
 		const suitsCount = {}
@@ -96,16 +98,15 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 
 		// Handle low-Ace straight (A-2-3-4-5)
 		if (ranks.includes(14)) {
-			ranks.push(1)
+			ranks.unshift(1)
 		}
-		ranks.sort((a, b) => a - b)
 
 		for (let i = 0; i <= ranks.length - 5; i++) {
 			if (
-				ranks[i] + 1 === ranks[i + 1] &&
-				ranks[i] + 2 === ranks[i + 2] &&
-				ranks[i] + 3 === ranks[i + 3] &&
-				ranks[i] + 4 === ranks[i + 4]
+				ranks[i] - 1 === ranks[i + 1] &&
+				ranks[i] - 2 === ranks[i + 2] &&
+				ranks[i] - 3 === ranks[i + 3] &&
+				ranks[i] - 4 === ranks[i + 4]
 			) {
 				isStraight = true
 				break
@@ -119,21 +120,18 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 			const flushCards = cards.filter(card => card.suit === flushSuit)
 			const flushRanks = [...new Set(flushCards.map(card => card.rank))]
 			if (flushRanks.includes(14)) {
-				flushRanks.push(1)
+				flushRanks.unshift(1)
 			}
-			flushRanks.sort((a, b) => a - b)
+			flushRanks.sort((a, b) => b - a)
 			for (let i = 0; i <= flushRanks.length - 5; i++) {
 				if (
-					flushRanks[i] + 1 === flushRanks[i + 1] &&
-					flushRanks[i] + 2 === flushRanks[i + 2] &&
-					flushRanks[i] + 3 === flushRanks[i + 3] &&
-					flushRanks[i] + 4 === flushRanks[i + 4]
+					flushRanks[i] - 1 === flushRanks[i + 1] &&
+					flushRanks[i] - 2 === flushRanks[i + 2] &&
+					flushRanks[i] - 3 === flushRanks[i + 3] &&
+					flushRanks[i] - 4 === flushRanks[i + 4]
 				) {
 					isStraightFlush = true
-					if (
-						flushRanks.slice(i, i + 5).includes(14) &&
-						flushRanks.slice(i, i + 5).includes(10)
-					) {
+					if (flushRanks[i] === 14) {
 						isRoyalFlush = true
 					}
 					break
@@ -152,44 +150,62 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		const pairs = countsValues.filter(count => count === 2).length
 
 		// Determine hand rank and fixed winnings
-		if (isRoyalFlush) return { hand: 'Royal Flush', winnings: bet * 100 }
-		if (isStraightFlush) return { hand: 'Straight Flush', winnings: bet * 20 }
-		if (hasFourOfKind) return { hand: 'Four of a Kind', winnings: bet * 10 }
-		if (hasThreeOfKind && pairs >= 1)
-			return { hand: 'Full House', winnings: bet * 7 }
-		if (isFlush) return { hand: 'Flush', winnings: bet * 5 }
-		if (isStraight) return { hand: 'Straight', winnings: bet * 2 }
-		if (hasThreeOfKind) return { hand: 'Three of a Kind', winnings: bet * 1.5 }
-		if (pairs >= 2) return { hand: 'Two Pair', winnings: bet * 1 }
-		if (pairs === 1) return { hand: 'One Pair', winnings: bet * 0.5 }
-		return { hand: 'High Card', winnings: 0 }
+		switch (true) {
+			case isRoyalFlush:
+				return { hand: 'Royal Flush', winnings: bet * 100 }
+			case isStraightFlush:
+				return { hand: 'Straight Flush', winnings: bet * 20 }
+			case hasFourOfKind:
+				return { hand: 'Four of a Kind', winnings: bet * 10 }
+			case hasThreeOfKind && pairs >= 1:
+				return { hand: 'Full House', winnings: bet * 7 }
+			case isFlush:
+				return { hand: 'Flush', winnings: bet * 5 }
+			case isStraight:
+				return { hand: 'Straight', winnings: bet * 2 }
+			case hasThreeOfKind:
+				return { hand: 'Three of a Kind', winnings: bet * 1.5 }
+			case pairs >= 2:
+				return { hand: 'Two Pair', winnings: bet * 1 }
+			case pairs === 1:
+				return { hand: 'One Pair', winnings: bet * 0.5 }
+			default:
+				return { hand: 'High Card', winnings: 0 }
+		}
 	}
 
-	// Deal cards (on button click)
-	const dealCards = () => {
+	const dealInitialCards = () => {
+		setGameStarted(true)
+		setGameStage('betting')
 		if (bank < bet) {
 			setResult('Insufficient balance. Cannot deal.')
 			return
 		}
 
 		const shuffledDeck = shuffleArray([...allCards])
-
 		const newUserCards = shuffledDeck.slice(0, 2)
-		const newComputerCards = shuffledDeck.slice(2, 4) // Карты для компьютера
+		setUserCards(newUserCards)
+		setComputerCards([emptyCard, emptyCard])
+		setTableCards([emptyCard, emptyCard, emptyCard, emptyCard, emptyCard])
+		setResult('')
+		setWinnings(0)
+	}
+
+	const revealCards = () => {
+		setGameStage('reveal')
+		const shuffledDeck = shuffleArray([...allCards])
+		const newComputerCards = shuffledDeck.slice(2, 4)
 		const newTableCards = shuffledDeck.slice(4, 9)
 
-		setUserCards(newUserCards)
-		setComputerCards(newComputerCards) // Устанавливаем карты компьютера
+		setComputerCards(newComputerCards)
 		setTableCards(newTableCards)
 
-		const allUserCards = [...newUserCards, ...newTableCards]
-		const allComputerCards = [...newComputerCards, ...newTableCards] // Карты для компьютера с общими картами
+		const allUserCards = [...userCards, ...newTableCards]
+		const allComputerCards = [...newComputerCards, ...newTableCards]
 
-		// Генерируем все возможные комбинации 5-карт для пользователя и компьютера
 		const userCombinations = getCombinations(allUserCards, 5)
 		const computerCombinations = getCombinations(allComputerCards, 5)
 
-		// Оценка рук
 		let bestUserHand = { winnings: 0 }
 		userCombinations.forEach(hand => {
 			const evaluation = evaluateHand(hand)
@@ -206,40 +222,64 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 			}
 		})
 
-		// Сравнение рук
+		let newWinnings = 0
 		if (bestUserHand.winnings > bestComputerHand.winnings) {
-			setResult(`You win with ${bestUserHand.hand}!`)
-			setWinnings(bestUserHand.winnings)
+			setResult(`You win with  ${bestUserHand.hand}!`)
+			newWinnings = bestUserHand.winnings
 		} else if (bestUserHand.winnings < bestComputerHand.winnings) {
-			setResult(`Computer wins with ${bestComputerHand.hand}!`)
-			setWinnings(0) // Вы проиграли, никаких выигрышей
+			setResult(`Trinity wins with ${bestComputerHand.hand}!`)
+			newWinnings = 0
 		} else {
-			setResult(`It's a tie with ${bestUserHand.hand}!`)
-			setWinnings(bestUserHand.winnings) // Вернуть ставку
+			setResult(
+				`It's a tie with ${
+					bestUserHand.hand === undefined ? 'High Card' : bestUserHand.hand
+				}!`
+			)
+			newWinnings = bet
 		}
 
-		const newBalance = bank - bet + winnings
-		setBank(newBalance)
-
-		// Update balance on backend
-		// fetch('/api/updateBalance', {
-		// 	method: 'POST',
-		// 	headers: { 'Content-Type': 'application/json' },
-		// 	body: JSON.stringify({
-		// 		userId: telegramUser.id,
-		// 		balance: newBalance,
-		// 	}),
-		// })
-		// 	.then(res => res.json())
-		// 	.then(data => {
-		// 		if (!data.success) {
-		// 			console.error('Error updating balance:', data.message)
-		// 		}
-		// 	})
-		// 	.catch(error => {
-		// 		console.error('Error updating balance:', error)
-		// 	})
+		setWinnings(newWinnings)
+		setBank(prevBank => {
+			const newBalance = prevBank - bet + newWinnings
+			console.log(
+				`Предыдущий баланс: ${prevBank}`,
+				`Ставка: ${bet}`,
+				`Выигрыш: ${newWinnings}`,
+				`Новый баланс: ${newBalance}`
+			)
+			return newBalance
+		})
 	}
+
+	const startNewGame = () => {
+		setGameStage('initial')
+		setGameStarted(false)
+		setUserCards([])
+		setComputerCards([])
+		setTableCards([])
+		setResult('')
+		setWinnings(0)
+		setBet(5)
+	}
+
+	// Update balance on backend
+	// fetch('/api/updateBalance', {
+	// 	method: 'POST',
+	// 	headers: { 'Content-Type': 'application/json' },
+	// 	body: JSON.stringify({
+	// 		userId: telegramUser.id,
+	// 		balance: newBalance,
+	// 	}),
+	// })
+	// 	.then(res => res.json())
+	// 	.then(data => {
+	// 		if (!data.success) {
+	// 			console.error('Error updating balance:', data.message)
+	// 		}
+	// 	})
+	// 	.catch(error => {
+	// 		console.error('Error updating balance:', error)
+	// 	})
 
 	// Handle withdrawal
 	const handleWithdraw = e => {
@@ -278,20 +318,16 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		bet,
 		setBet,
 		tableCards,
-		setTableCards,
 		userCards,
-		setUserCards,
+		computerCards,
 		result,
-		setResult,
 		winnings,
-		setWinnings,
 		increaseBet,
 		decreaseBet,
-		shuffleArray,
-		getCombinations,
-		evaluateHand,
-		dealCards,
-		handleWithdraw,
-		computerCards,
+		dealInitialCards,
+		revealCards,
+		startNewGame,
+		gameStarted,
+		gameStage,
 	}
 }
