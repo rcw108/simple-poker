@@ -1,12 +1,12 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
-import { TelegramUser } from '../ui/telegramUser/TelegramUser'
-import './PokerTable.css'
-import { usePokerTable } from './usePokerTable'
-import { useTelegram } from './useTelegram'
+import { TelegramUser } from '../ui/telegramUser/TelegramUser';
+import './PokerTable.css';
+import { usePokerTable } from './usePokerTable';
+import { useTelegram } from './useTelegram';
 
 const PokerTable = () => {
-	const [bank, setBank] = useState(100)
+  const [bank, setBank] = useState(null); // Changed initial state to null
 
 	const cardVariants = {
 		initial: {
@@ -66,6 +66,10 @@ const PokerTable = () => {
 		gameStarted,
 		gameStage,
 	  } = usePokerTable(telegramUser, bank, setBank);
+	  // Ensure to display loading state when balance is being fetched
+  	if (bank === null) {
+    	return <div>Loading your balance...</div>;
+  	}
 
 	useEffect(() => {
 		if (telegramUser) {

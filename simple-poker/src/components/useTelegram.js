@@ -8,20 +8,14 @@ export const useTelegram = (setBank) => {
   const [withdrawAddress, setWithdrawAddress] = useState('');
 
   useEffect(() => {
-    // Check if Telegram WebApp is available
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready(); // Ensure the WebApp is ready
 
-      // Extract user data from the WebApp
       const initData = tg.initData;
       const initDataUnsafe = tg.initDataUnsafe;
 
-      console.log('Telegram Init Data:', initData);
-      console.log('Telegram User Data:', initDataUnsafe);
-
       if (initDataUnsafe && initDataUnsafe.user) {
-        // Set the Telegram user if found
         setTelegramUser(initDataUnsafe.user);
 
         // Fetch user balance from backend
@@ -29,7 +23,8 @@ export const useTelegram = (setBank) => {
           .then((res) => res.json())
           .then((data) => {
             if (data.success) {
-              setBank(data.balance); // Set the user's balance in the state
+              // Update the bank balance in the parent component via setBank
+              setBank(data.balance);
             } else {
               console.error('Error fetching balance:', data.message);
             }
