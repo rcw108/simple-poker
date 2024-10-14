@@ -84,37 +84,75 @@ app.get('/', (req, res) => {
   res.send('Backend server is running!');
 });
 
+function verifyTelegramAuth(initData) {
+  const secretKey = crypto
+    .createHash('sha256')
+    .update(process.env.TELEGRAM_BOT_TOKEN)
+    .digest();
+
+  const parsedData = new URLSearchParams(initData);
+  const dataCheckString = [];
+  const tgHash = parsedData.get('hash');
+
+  parsedData.forEach((value, key) => {
+    if (key !== 'hash') {
+      dataCheckString.push(`${key}=${value}`);
+    }
+  });
+
+  dataCheckString.sort();
+  const dataString = dataCheckString.join('\n');
+
+  const hmac = crypto
+    .createHmac('sha256', secretKey)
+    .update(dataString)
+    .digest('hex');
+
+  return hmac === tgHash;
+}
+
 // Verify Telegram user and create or find user in MongoDB
 app.post('/api/verifyUser', async (req, res) => {
   const { initData, initDataUnsafe } = req.body;
 
-  // You should add a verification process for Telegram's 'hash'
-  if (!verifyTelegramAuth(initData, initDataUnsafe)) {
+  // Add debugging log
+  console.log('Received initData:', initData);
+  console.log('Received initDataUnsafe:', initDataUnsafe);
+
+  // Verify Telegram authentication data
+  if (!verifyTelegramAuth(initData)) {
+    console.error('Invalid Telegram authentication data.');
     return res.status(403).json({ success: false, message: 'Invalid Telegram authentication data.' });
   }
 
-  const { id, first_name, username } = initDataUnsafe;
+  const parsedData = new URLSearchParams(initData);
+  const userId = parsedData.get('id');
+  const firstName = parsedData.get('first_name');
+  const username = parsedData.get('username');
+
+  // Check if we are receiving the correct data
+  console.log('Parsed User Data:', { userId, firstName, username });
 
   try {
     const usersCollection = db.collection('users');
 
-    // Check if user already exists in the database
-    let user = await usersCollection.findOne({ _id: id });
+    // Check if the user exists in the database
+    let user = await usersCollection.findOne({ _id: userId });
 
-    // If user doesn't exist, create a new user
     if (!user) {
+      // If user doesn't exist, create a new one
       user = {
-        _id: id,
-        firstName: first_name,
-        username: username,
-        balance: 500,  // Assign a default balance
-        processedTransactions: []
+        _id: userId,
+        firstName,
+        username,
+        balance: 500,
+        processedTransactions: [],
       };
 
-      await usersCollection.insertOne(user);
-      console.log(`Created new user: ${id}`);
+      const insertResult = await usersCollection.insertOne(user);
+      console.log(`Created new user: ${userId}`, insertResult);
     } else {
-      console.log(`User ${id} already exists.`);
+      console.log(`User ${userId} already exists.`);
     }
 
     res.json({ success: true, user });
@@ -123,6 +161,7 @@ app.post('/api/verifyUser', async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
+
 
 // Get user balance
 app.get('/api/getBalance', async (req, res) => {
