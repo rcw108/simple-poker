@@ -67,6 +67,25 @@ const PokerTable = () => {
 		gameStage,
 	} = usePokerTable(telegramUser, bank, setBank)
 
+	  // Fetch user balance when the user is available (logged in)
+	  useEffect(() => {
+		if (telegramUser) {
+		  // Fetch the user's balance from the backend
+		  fetch(`http://localhost:3001/api/getBalance?userId=${telegramUser.id}`)
+			.then((res) => res.json())
+			.then((data) => {
+			  if (data.success) {
+				setBank(data.balance); // Set the user's balance in the state
+			  } else {
+				console.error('Error fetching balance:', data.message);
+			  }
+			})
+			.catch((error) => {
+			  console.error('Error fetching balance:', error);
+			});
+		}
+	  }, [telegramUser]);
+	  
 	const handleWithdraw = e => {
 		e.preventDefault()
 
