@@ -84,38 +84,47 @@ app.get('/', (req, res) => {
   res.send('Backend server is running!');
 });
 
-function verifyTelegramAuth(initData) {
-  const secretKey = crypto
-    .createHash('sha256')
+// Function to verify Telegram authentication data
+function verifyTelegramAuth(initData, initDataUnsafe) {
+  // Debugging logs to see if initDataUnsafe is being passed correctly
+  console.log('Init Data Unsafe in verifyTelegramAuth:', initDataUnsafe);
+
+  if (!initDataUnsafe || !initDataUnsafe.auth_date) {
+    console.error('Invalid initDataUnsafe, missing fields');
+    return false;
+  }
+
+  // Step 1: Generate the secret key
+  const secretKey = crypto.createHmac('sha256', 'WebAppData')
     .update(process.env.TELEGRAM_BOT_TOKEN)
     .digest();
 
-  const parsedData = new URLSearchParams(initData);
-  const dataCheckString = [];
-  const tgHash = parsedData.get('hash');
+  // Step 2: Build the data check string
+  const dataCheckString = [
+    `auth_date=${initDataUnsafe.auth_date}`,
+    `query_id=${initDataUnsafe.query_id}`,
+    `user=${JSON.stringify(initDataUnsafe.user)}`
+  ].join('\n');
 
-  parsedData.forEach((value, key) => {
-    if (key !== 'hash') {
-      dataCheckString.push(`${key}=${value}`);
-    }
-  });
-
-  dataCheckString.sort();
-  const dataString = dataCheckString.join('\n');
-
-  const hmac = crypto
-    .createHmac('sha256', secretKey)
-    .update(dataString)
+  // Step 3: Generate the HMAC of the data check string
+  const generatedHash = crypto.createHmac('sha256', secretKey)
+    .update(dataCheckString)
     .digest('hex');
 
-  return hmac === tgHash;
+  // Step 4: Compare the generated hash with the hash received from Telegram
+  if (generatedHash === initDataUnsafe.hash) {
+    return true; // Validation successful
+  } else {
+    console.error('Hash mismatch, invalid data');
+    return false; // Validation failed
+  }
 }
 
 // Verify Telegram user and create or find user in MongoDB
 app.post('/api/verifyUser', async (req, res) => {
   const { initData, initDataUnsafe } = req.body;
 
-  // Add debugging log
+ // Debugging log
   console.log('Received initData:', initData);
   console.log('Received initDataUnsafe:', initDataUnsafe);
 
