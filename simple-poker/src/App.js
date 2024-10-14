@@ -15,7 +15,7 @@ function AppContent() {
       // Extract user data from the WebApp
       const initData = tg.initData; // Authenticated data
       const initDataUnsafe = tg.initDataUnsafe; // User data
-  
+      
       console.log('Telegram Init Data:', initData);
       console.log('Telegram User Data:', initDataUnsafe);
   
