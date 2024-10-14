@@ -13,6 +13,31 @@ function AppContent() {
       tg.ready(); // Notify Telegram that the app is ready
       setIsTelegramWebAppDetected(true);
       console.log('Telegram WebApp detected and ready');
+
+      // Extract user data from the WebApp
+      const initData = tg.initData; // Authenticated data
+
+      // Send user data to the backend for verification
+      fetch('http://localhost:3001/api/verifyUser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          initData,  // Authenticated Telegram data
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            console.log('User verified and added to the database:', data);
+          } else {
+            console.error('Error verifying user:', data.message);
+          }
+        })
+        .catch((error) => {
+          console.error('Error sending data to the backend:', error);
+        });
     } else {
       console.error('Telegram WebApp is not available');
     }
@@ -26,7 +51,6 @@ function AppContent() {
     <div className="App">
       {user ? (
         <div>
-          <h1>Welcome {user.username}</h1>
           <PokerTable />
         </div>
       ) : (
