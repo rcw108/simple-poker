@@ -84,9 +84,8 @@ app.get('/', (req, res) => {
   res.send('Backend server is running!');
 });
 
-// Function to verify Telegram authentication data
 function verifyTelegramAuth(initData, initDataUnsafe) {
-  // Debugging logs to see if initDataUnsafe is being passed correctly
+  // Debugging logs to see if initDataUnsafe is passed correctly
   console.log('Init Data Unsafe in verifyTelegramAuth:', initDataUnsafe);
 
   if (!initDataUnsafe || !initDataUnsafe.auth_date) {
@@ -94,24 +93,24 @@ function verifyTelegramAuth(initData, initDataUnsafe) {
     return false;
   }
 
-  // Step 1: Generate the secret key
+  // Generate the secret key
   const secretKey = crypto.createHmac('sha256', 'WebAppData')
     .update(process.env.TELEGRAM_BOT_TOKEN)
     .digest();
 
-  // Step 2: Build the data check string
+  // Build the data check string
   const dataCheckString = [
     `auth_date=${initDataUnsafe.auth_date}`,
     `query_id=${initDataUnsafe.query_id}`,
     `user=${JSON.stringify(initDataUnsafe.user)}`
   ].join('\n');
 
-  // Step 3: Generate the HMAC of the data check string
+  // Generate the HMAC of the data check string
   const generatedHash = crypto.createHmac('sha256', secretKey)
     .update(dataCheckString)
     .digest('hex');
 
-  // Step 4: Compare the generated hash with the hash received from Telegram
+  // Compare the generated hash with the hash received from Telegram
   if (generatedHash === initDataUnsafe.hash) {
     return true; // Validation successful
   } else {
@@ -120,79 +119,39 @@ function verifyTelegramAuth(initData, initDataUnsafe) {
   }
 }
 
-// Verify Telegram user and create or find user in MongoDB
 app.post('/api/verifyUser', async (req, res) => {
-  const { initData, initDataUnsafe } = req.body;
-
- // Debugging log
-  console.log('Received initData:', initData);
-  console.log('Received initDataUnsafe:', initDataUnsafe);
-
-  // Verify Telegram authentication data
-  if (!verifyTelegramAuth(initData)) {
-    console.error('Invalid Telegram authentication data.');
-    return res.status(403).json({ success: false, message: 'Invalid Telegram authentication data.' });
-  }
-
-  const parsedData = new URLSearchParams(initData);
-  const userId = parsedData.get('id');
-  const firstName = parsedData.get('first_name');
-  const username = parsedData.get('username');
-
-  // Check if we are receiving the correct data
-  console.log('Parsed User Data:', { userId, firstName, username });
+  const { initDataUnsafe } = req.body;
+  const userId = initDataUnsafe.user.id;
+  const firstName = initDataUnsafe.user.first_name;
+  const username = initDataUnsafe.user.username;
 
   try {
     const usersCollection = db.collection('users');
 
-    // Check if the user exists in the database
-    let user = await usersCollection.findOne({ _id: userId });
+    // Check if the user already exists in the database
+    let user = await usersCollection.findOne({ id: userId });
 
-    if (!user) {
-      // If user doesn't exist, create a new one
-      user = {
-        _id: userId,
-        firstName,
-        username,
-        balance: 500,
-        processedTransactions: [],
-      };
-
-      const insertResult = await usersCollection.insertOne(user);
-      console.log(`Created new user: ${userId}`, insertResult);
-    } else {
-      console.log(`User ${userId} already exists.`);
+    if (user) {
+      console.log(`User ${userId} already exists in the database.`);
+      // You could update the user info here if needed
+      return res.json({ success: true, user });
     }
+
+    // If the user does not exist, create a new user
+    user = {
+      id: userId,
+      firstName,
+      username,
+      balance: 500,
+      processedTransactions: []
+    };
+
+    await usersCollection.insertOne(user);
+    console.log(`Created new user: ${userId}`);
 
     res.json({ success: true, user });
   } catch (err) {
     console.error('Error verifying user:', err.message);
-    res.status(500).json({ success: false, message: 'Internal server error.' });
-  }
-});
-
-
-// Get user balance
-app.get('/api/getBalance', async (req, res) => {
-  const userId = req.query.userId;
-
-  if (!userId) {
-    console.error('User ID is missing in the request.');
-    return res.status(400).json({ success: false, message: 'User ID is required.' });
-  }
-
-  try {
-    const usersCollection = db.collection('users');
-    const user = await usersCollection.findOne({ _id: userId });
-
-    if (!user) {
-      console.error(`User not found: ${userId}`);
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
-
-    res.json({ success: true, balance: user.balance });
-  } catch (err) {
-    console.error('Error fetching balance:', err.message);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
