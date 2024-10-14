@@ -6,11 +6,15 @@ function App() {
     // Check if Telegram WebApp is available
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
+
       tg.expand(); // Expands the web app to full screen
 
       // Extract user data from the WebApp
       const initData = tg.initData; // Authenticated data
       const initDataUnsafe = tg.initDataUnsafe; // User data
+
+      // Show Telegram's built-in debug popup
+      tg.showDebug();
 
       console.log('Telegram Init Data:', initData);
       console.log('Telegram User Data:', initDataUnsafe);
