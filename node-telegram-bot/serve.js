@@ -142,7 +142,7 @@ app.post('/api/verifyUser', async (req, res) => {
       id: userId,
       firstName,
       username,
-      balance: 500,
+      balance: 100,
       processedTransactions: []
     };
 
