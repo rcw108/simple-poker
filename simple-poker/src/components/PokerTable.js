@@ -49,9 +49,9 @@ const PokerTable = () => {
 		setWithdrawAmount,
 		withdrawAddress,
 		setWithdrawAddress,
-	} = useTelegram(setBank)
-
-	const {
+	  } = useTelegram(setBank);
+	
+	  const {
 		bet,
 		tableCards,
 		userCards,
@@ -65,24 +65,12 @@ const PokerTable = () => {
 		startNewGame,
 		gameStarted,
 		gameStage,
-	} = usePokerTable(telegramUser, bank, setBank)
+	  } = usePokerTable(telegramUser, bank, setBank);
 
-	  // Fetch user balance when the user is available (logged in)
-	  useEffect(() => {
+	useEffect(() => {
 		if (telegramUser) {
-		  // Fetch the user's balance from the backend
-		  fetch(`http://localhost:3001/api/getBalance?userId=${telegramUser.id}`)
-			.then((res) => res.json())
-			.then((data) => {
-			  if (data.success) {
-				setBank(data.balance); // Set the user's balance in the state
-			  } else {
-				console.error('Error fetching balance:', data.message);
-			  }
-			})
-			.catch((error) => {
-			  console.error('Error fetching balance:', error);
-			});
+		  console.log('User logged in:', telegramUser);
+		  // Balance already fetched via useTelegram, no need to refetch
 		}
 	  }, [telegramUser]);
 
