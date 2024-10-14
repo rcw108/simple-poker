@@ -1,86 +1,57 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
-export const useTelegram = setBank => {
-	// Initialize Telegram Web App
-	const [telegramUser, setTelegramUser] = useState(null)
-	// State variables for deposit and withdrawal
-	const [depositAddress, setDepositAddress] = useState('')
-	const [depositComment, setDepositComment] = useState('')
+export const useTelegram = (setBank) => {
+  const [telegramUser, setTelegramUser] = useState(null);
+  const [depositAddress, setDepositAddress] = useState('');
+  const [depositComment, setDepositComment] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawAddress, setWithdrawAddress] = useState('');
 
-	// Initialize Telegram Web App
-	useEffect(() => {
-		const initTelegram = () => {
-			const tg = window.Telegram.WebApp
-			const initData = tg.initData
-			console.log(initData)
+  useEffect(() => {
+    // Check if Telegram WebApp is available
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready(); // Ensure the WebApp is ready
 
-			// Verify user with backend
+      // Extract user data from the WebApp
+      const initData = tg.initData;
+      const initDataUnsafe = tg.initDataUnsafe;
 
-			// fetch('/api/verifyUser', {
-			// 	method: 'POST',
-			// 	headers: { 'Content-Type': 'application/json' },
-			// 	body: JSON.stringify({ initData }),
-			// })
-			// 	.then(res => res.json())
-			// 	.then(data => {
-			// 		if (data.success) {
-			// 			setTelegramUser(data.user)
+      console.log('Telegram Init Data:', initData);
+      console.log('Telegram User Data:', initDataUnsafe);
 
-			// 			// Fetch user balance
-			// 			fetch(`/api/getBalance?userId=${data.user.id}`)
-			// 				.then(res => res.json())
-			// 				.then(balanceData => {
-			// 					if (balanceData.success) {
-			// 						setBank(balanceData.balance)
-			// 					} else {
-			// 						console.error('Error fetching balance:', balanceData.message)
-			// 					}
-			// 				})
-			// 				.catch(error => {
-			// 					console.error('Error fetching balance:', error)
-			// 				})
+      if (initDataUnsafe && initDataUnsafe.user) {
+        // Set the Telegram user if found
+        setTelegramUser(initDataUnsafe.user);
 
-			// 			// Fetch deposit address and comment
-			// 			fetch(`/api/getDepositAddress?userId=${data.user.id}`)
-			// 				.then(res => res.json())
-			// 				.then(depositData => {
-			// 					if (depositData.success) {
-			// 						setDepositAddress(depositData.address)
-			// 						setDepositComment(depositData.comment)
-			// 					} else {
-			// 						console.error(
-			// 							'Error fetching deposit address:',
-			// 							depositData.message
-			// 						)
-			// 					}
-			// 				})
-			// 				.catch(error => {
-			// 					console.error('Error fetching deposit address:', error)
-			// 				})
-			// 		} else {
-			// 			alert('Failed to verify Telegram user.')
-			// 		}
-			// 	})
-			// 	.catch(error => {
-			// 		console.error('Error verifying user:', error)
-			// 	})
-		}
+        // Fetch user balance from backend
+        fetch(`http://localhost:3001/api/getBalance?userId=${initDataUnsafe.user.id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              setBank(data.balance); // Set the user's balance in the state
+            } else {
+              console.error('Error fetching balance:', data.message);
+            }
+          })
+          .catch((error) => {
+            console.error('Error fetching balance:', error);
+          });
+      } else {
+        console.error('Telegram User data is missing.');
+      }
+    } else {
+      console.error('Telegram WebApp is not available.');
+    }
+  }, [setBank]);
 
-		if (window.Telegram && window.Telegram.WebApp) {
-			initTelegram()
-		} else {
-			const script = document.createElement('script')
-			script.src = 'https://telegram.org/js/telegram-web-app.js'
-			script.onload = initTelegram
-			document.body.appendChild(script)
-		}
-	}, [])
-
-	return {
-		telegramUser,
-		depositAddress,
-		setDepositAddress,
-		depositComment,
-		setDepositComment,
-	}
-}
+  return {
+    telegramUser,
+    depositAddress,
+    depositComment,
+    withdrawAmount,
+    setWithdrawAmount,
+    withdrawAddress,
+    setWithdrawAddress,
+  };
+};
