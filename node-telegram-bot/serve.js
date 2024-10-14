@@ -86,37 +86,35 @@ app.get('/', (req, res) => {
 
 // Verify Telegram user and create or find user in MongoDB
 app.post('/api/verifyUser', async (req, res) => {
-  const { initData } = req.body;
+  const { initData, initDataUnsafe } = req.body;
 
-  if (!verifyTelegramAuth(initData)) {
+  // You should add a verification process for Telegram's 'hash'
+  if (!verifyTelegramAuth(initData, initDataUnsafe)) {
     return res.status(403).json({ success: false, message: 'Invalid Telegram authentication data.' });
   }
 
-  const parsedData = new URLSearchParams(initData);
-  const userId = parsedData.get('id');
-  const firstName = parsedData.get('first_name');
-  const username = parsedData.get('username');
+  const { id, first_name, username } = initDataUnsafe;
 
   try {
     const usersCollection = db.collection('users');
 
     // Check if user already exists in the database
-    let user = await usersCollection.findOne({ _id: userId });
+    let user = await usersCollection.findOne({ _id: id });
 
     // If user doesn't exist, create a new user
     if (!user) {
       user = {
-        _id: userId,
-        firstName,
-        username,
-        balance: 500,
+        _id: id,
+        firstName: first_name,
+        username: username,
+        balance: 500,  // Assign a default balance
         processedTransactions: []
       };
 
       await usersCollection.insertOne(user);
-      console.log(`Created new user: ${userId}`);
+      console.log(`Created new user: ${id}`);
     } else {
-      console.log(`User ${userId} already exists.`);
+      console.log(`User ${id} already exists.`);
     }
 
     res.json({ success: true, user });
