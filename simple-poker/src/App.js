@@ -11,13 +11,15 @@ function AppContent() {
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready(); // Notify Telegram that the app is ready
-      setIsTelegramWebAppDetected(true);
-      console.log('Telegram WebApp detected and ready');
-
+  
       // Extract user data from the WebApp
       const initData = tg.initData; // Authenticated data
-
-      // Send user data to the backend for verification
+      const initDataUnsafe = tg.initDataUnsafe; // User data
+  
+      console.log('Telegram Init Data:', initData);
+      console.log('Telegram User Data:', initDataUnsafe);
+  
+      // Send user data to the backend
       fetch('http://localhost:3001/api/verifyUser', {
         method: 'POST',
         headers: {
@@ -25,6 +27,7 @@ function AppContent() {
         },
         body: JSON.stringify({
           initData,  // Authenticated Telegram data
+          initDataUnsafe,  // Telegram user data
         }),
       })
         .then((res) => res.json())
@@ -39,7 +42,7 @@ function AppContent() {
           console.error('Error sending data to the backend:', error);
         });
     } else {
-      console.error('Telegram WebApp is not available');
+      console.error('Telegram WebApp is not available.');
     }
   }, []);
 
