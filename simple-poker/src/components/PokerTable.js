@@ -49,7 +49,7 @@ const PokerTable = () => {
 		setWithdrawAmount,
 		withdrawAddress,
 		setWithdrawAddress,
-	  } = useTelegram(setBank);
+	  } = useTelegram(setBank); // The bank is set by the useTelegram hook
 	
 	  const {
 		bet,
@@ -66,17 +66,18 @@ const PokerTable = () => {
 		gameStarted,
 		gameStage,
 	  } = usePokerTable(telegramUser, bank, setBank);
-	  // Ensure to display loading state when balance is being fetched
-  	if (bank === null) {
-    	return <div>Loading your balance...</div>;
-  	}
-
-	useEffect(() => {
+	
+	  useEffect(() => {
 		if (telegramUser) {
 		  console.log('User logged in:', telegramUser);
-		  // Balance already fetched via useTelegram, no need to refetch
+		  // Bank will already be fetched by useTelegram hook, no need to refetch
 		}
 	  }, [telegramUser]);
+	
+	  // Ensure to display loading state when balance is being fetched
+	  if (bank === null) {
+		return <div>Loading your balance...</div>;
+	  }
 
 	const handleWithdraw = e => {
 		e.preventDefault()
