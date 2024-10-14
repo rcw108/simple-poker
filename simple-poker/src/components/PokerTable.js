@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import { TelegramUser } from '../ui/telegramUser/TelegramUser'
 import './PokerTable.css'
 import { usePokerTable } from './usePokerTable'
@@ -85,7 +85,7 @@ const PokerTable = () => {
 			});
 		}
 	  }, [telegramUser]);
-	  
+
 	const handleWithdraw = e => {
 		e.preventDefault()
 
