@@ -1,13 +1,22 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { TelegramUser } from '../ui/telegramUser/TelegramUser';
 import './PokerTable.css';
 import { usePokerTable } from './usePokerTable';
 import { useTelegram } from './useTelegram';
 
 const PokerTable = () => {
-  const [bank, setBank] = useState(null);
-  const [upDown, setUpDown] = useState('')
+	const [bank, setBank] = useState(null);
+	const [upDown, setUpDown] = useState('');
+	
+	// Initialize navigate inside the component
+	const navigate = useNavigate();
+  
+	const onCrownClick = () => {
+	  // Navigate to the balance options page
+	  navigate('/balance-options');
+	};
 	const cardVariants = {
 		initial: {
 			opacity: 0,
