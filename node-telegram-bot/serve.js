@@ -10,7 +10,7 @@ const TonWeb = require('tonweb');
 const { MongoClient } = require('mongodb'); // MongoDB Client
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 80;
 
 // Middleware
 app.use(cors({

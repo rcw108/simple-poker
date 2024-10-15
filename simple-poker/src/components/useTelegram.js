@@ -19,7 +19,7 @@ export const useTelegram = (setBank) => {
         setTelegramUser(initDataUnsafe.user);
 
         // Fetch user balance from backend
-        fetch(`https://5666-151-36-90-93.ngrok-free.app/api/getBalance?userId=${initDataUnsafe.user.id}`)
+        fetch(`https://game-baboon-included.ngrok-free.app/api/getBalance?userId=${initDataUnsafe.user.id}`)
           .then((res) => res.json())
           .then((data) => {
             if (data.success) {
