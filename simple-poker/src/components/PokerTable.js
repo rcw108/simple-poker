@@ -7,7 +7,7 @@ import { useTelegram } from './useTelegram';
 
 const PokerTable = () => {
   const [bank, setBank] = useState(null); // Changed initial state to null
-
+  const [upDown, setUpDown] = useState('')
 	const cardVariants = {
 		initial: {
 			opacity: 0,
@@ -109,7 +109,7 @@ const PokerTable = () => {
 			})
 	}
 
-	const [upDown, setUpDown] = useState('')
+
 
 	return (
 		<div className='poker-table'>
