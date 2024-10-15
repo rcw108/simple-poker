@@ -88,6 +88,35 @@ const PokerTable = () => {
 		return <div>Loading your balance...</div>;
 	  }
 
+	  const handleGameResult = (winnings) => {
+		// Adjust the in-game balance based on winnings or losses
+		const newBalance = bank + winnings; // winnings can be positive or negative depending on win/loss
+		setBank(newBalance);
+	  
+		// Send a request to the backend to update the user's balance in the database
+		fetch('https://game-baboon-included.ngrok-free.app/api/updateBalance', {
+		  method: 'POST',
+		  headers: {
+			'Content-Type': 'application/json',
+		  },
+		  body: JSON.stringify({
+			userId: telegramUser.id,
+			balance: newBalance,
+		  }),
+		})
+		  .then((res) => res.json())
+		  .then((data) => {
+			if (data.success) {
+			  console.log('Balance successfully updated in the backend.');
+			} else {
+			  console.error(`Error updating balance: ${data.message}`);
+			}
+		  })
+		  .catch((error) => {
+			console.error('Error updating balance:', error);
+		  });
+	  };
+
 	const handleWithdraw = e => {
 		e.preventDefault()
 
@@ -198,6 +227,7 @@ const PokerTable = () => {
 							<div>
 								<AnimatePresence mode='wait'>
 									{result && (
+										<>
 										<motion.div
 											className='flash-text'
 											initial={{ opacity: 0, scale: 0.5 }}
@@ -207,6 +237,8 @@ const PokerTable = () => {
 										>
 											{result}
 										</motion.div>
+										{result === 'win' ? handleGameResult(winnings) : handleGameResult(-bet)}
+										</>
 									)}
 								</AnimatePresence>
 
