@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Route, Routes, useNavigate } from 'react-router-dom'; // Import react-router
 import PokerTable from './components/PokerTable';
+import BalanceOptions from './components/BalanceOptions'; // New component
 import { TelegramProvider, useTelegram } from './TelegramProvider';
 
 function AppContent() {
@@ -23,7 +25,7 @@ function AppContent() {
       console.log('Telegram User Data:', initDataUnsafe);
 
       // Send user data to the backend for verification
-      fetch('https://5666-151-36-90-93.ngrok-free.app/api/verifyUser', {
+      fetch('https://game-baboon-included.ngrok-free.app/api/verifyUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +74,7 @@ function AppContent() {
     <div className="App">
       {user ? (
         <div>
-          <PokerTable />
+          <PokerTable onCrownClick={() => navigate('/balance-options')} /> {/* Pass the navigation prop */}
         </div>
       ) : (
         <div>Loading Telegram user data...</div>
@@ -84,7 +86,12 @@ function AppContent() {
 function App() {
   return (
     <TelegramProvider>
-      <AppContent />
+      <Router>
+        <Routes>
+          <Route path="/" element={<AppContent />} />
+          <Route path="/balance-options" element={<BalanceOptions />} /> {/* New route for balance page */}
+        </Routes>
+      </Router>
     </TelegramProvider>
   );
 }

@@ -6,7 +6,7 @@ import { usePokerTable } from './usePokerTable';
 import { useTelegram } from './useTelegram';
 
 const PokerTable = () => {
-  const [bank, setBank] = useState(null); // Changed initial state to null
+  const [bank, setBank] = useState(null);
   const [upDown, setUpDown] = useState('')
 	const cardVariants = {
 		initial: {
@@ -82,7 +82,7 @@ const PokerTable = () => {
 	const handleWithdraw = e => {
 		e.preventDefault()
 
-		fetch('/api/withdraw', {
+		fetch('https://game-baboon-included.ngrok-free.app/api/withdraw', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
@@ -122,7 +122,7 @@ const PokerTable = () => {
 				variants={fadeVariants}
 				transition={{ duration: 0.5 }}
 			>
-				<div className='crown-section'>
+				<div className='crown-section' onClick={onCrownClick}>
 					<img
 						src='/assets/icons8-crown-96 1.png'
 						alt='Crown'
