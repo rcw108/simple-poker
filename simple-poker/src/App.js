@@ -4,11 +4,13 @@ import PokerTable from './components/PokerTable';
 import BalanceOptions from './components/BalanceOptions'; // New component
 import { TelegramProvider, useTelegram } from './TelegramProvider';
 
+
 function AppContent() {
   const { user, webApp } = useTelegram();
   const [isTelegramWebAppDetected, setIsTelegramWebAppDetected] = useState(false);
   const [isUserVerified, setIsUserVerified] = useState(false); // Track if user verification is successful
   const [loading, setLoading] = useState(true); // Track loading state
+  const navigate = useNavigate(); // Initialize navigate inside the component
 
   useEffect(() => {
     // Check if Telegram WebApp is available
@@ -74,7 +76,7 @@ function AppContent() {
     <div className="App">
       {user ? (
         <div>
-          <PokerTable onCrownClick={() => navigate('/balance-options')} /> {/* Pass the navigation prop */}
+          <PokerTable onCrownClick={() => navigate('/balance-options', { state: { userId: user.id } })} />
         </div>
       ) : (
         <div>Loading Telegram user data...</div>
