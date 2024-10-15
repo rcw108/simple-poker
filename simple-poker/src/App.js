@@ -23,7 +23,7 @@ function AppContent() {
       console.log('Telegram User Data:', initDataUnsafe);
 
       // Send user data to the backend for verification
-      fetch('http://localhost:3001/api/verifyUser', {
+      fetch('https://5666-151-36-90-93.ngrok-free.app/api/verifyUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

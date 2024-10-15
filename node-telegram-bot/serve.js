@@ -13,7 +13,11 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins (or restrict to specific origins)
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(bodyParser.json());
 
 // MongoDB connection URI (replace with your MongoDB URI)
@@ -120,7 +124,17 @@ function verifyTelegramAuth(initData, initDataUnsafe) {
 }
 
 app.post('/api/verifyUser', async (req, res) => {
+  console.log('Incoming verifyUser request:');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body); // Log the entire body
   const { initDataUnsafe } = req.body;
+
+  // Add debugging logs
+  console.log('Received initDataUnsafe:', initDataUnsafe);
+
+  if (!initDataUnsafe || !initDataUnsafe.user || !initDataUnsafe.user.id) {
+    return res.status(400).json({ success: false, message: 'Invalid or missing user data.' });
+  }
   const userId = initDataUnsafe.user.id;
   const firstName = initDataUnsafe.user.first_name;
   const username = initDataUnsafe.user.username;
@@ -152,6 +166,31 @@ app.post('/api/verifyUser', async (req, res) => {
     res.json({ success: true, user });
   } catch (err) {
     console.error('Error verifying user:', err.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+});
+
+app.get('/api/getBalance', async (req, res) => {
+  const userId = req.query.userId;
+
+  if (!userId) {
+    console.error('User ID is missing in the request.');
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  }
+
+  try {
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne({ id: parseInt(userId) });
+
+    if (!user) {
+      console.error(`User not found: ${userId}`);
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Return the user's balance
+    res.json({ success: true, balance: user.balance });
+  } catch (err) {
+    console.error('Error retrieving balance:', err.message);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 });
