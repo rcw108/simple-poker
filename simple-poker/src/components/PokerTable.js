@@ -29,7 +29,6 @@ const PokerTable = () => {
 			setIsAnimating(true)
 		}
 	}
-
 	const cardVariants = {
 		initial: {
 			opacity: 0,
@@ -72,8 +71,7 @@ const PokerTable = () => {
 		withdrawAddress,
 		setWithdrawAddress,
 	} = useTelegram(setBank) // The bank is set by the useTelegram hook
-
-	const {
+	  const {
 		bet,
 		tableCards,
 		userCards,
@@ -87,6 +85,7 @@ const PokerTable = () => {
 		startNewGame,
 		gameStarted,
 		gameStage,
+
 		showConfetti,
 	} = usePokerTable(telegramUser, bank, setBank)
 
@@ -229,6 +228,16 @@ const PokerTable = () => {
 												image={card.image}
 												combination={card.combination}
 												flippedStage='reveal'
+											<motion.img
+												key={index}
+												src={card.image}
+												alt={`Computer card ${index}`}
+												className='card'
+												custom={index}
+												initial='initial'
+												animate='animate'
+												exit='exit'
+												variants={cardVariants}
 											/>
 										))}
 									</div>
@@ -250,6 +259,16 @@ const PokerTable = () => {
 											{/* {result === 'win'
 												? handleGameResult(winnings)
 												: handleGameResult(-bet)} */}
+										<motion.div
+											className='flash-text'
+											initial={{ opacity: 0, scale: 0.5 }}
+											animate={{ opacity: 1, scale: 1 }}
+											exit={{ opacity: 0, scale: 0.5 }}
+											transition={{ duration: 0.3 }}
+										>
+											{result}
+										</motion.div>
+										{result === 'win' ? handleGameResult(winnings) : handleGameResult(-bet)}
 										</>
 									)}
 								</AnimatePresence>
@@ -264,6 +283,32 @@ const PokerTable = () => {
 												image={card.image}
 												combination={card.combination}
 												flippedStage='reveal'
+									{gameStage !== 'initial' && gameStage !== 'betting' && (
+										<motion.div
+											className='win-text'
+											initial={{ opacity: 0, y: 20 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -20 }}
+											transition={{ duration: 0.3 }}
+										>
+											WIN {winnings}
+										</motion.div>
+									)}
+								</AnimatePresence>
+
+								<AnimatePresence mode='wait'>
+									<div className='table-cards'>
+										{tableCards.map((card, index) => (
+											<motion.img
+												key={index}
+												src={card.image}
+												alt={`Table card ${index}`}
+												className='card'
+												custom={index}
+												initial='initial'
+												animate='animate'
+												exit='exit'
+												variants={cardVariants}
 											/>
 										))}
 									</div>
@@ -304,6 +349,22 @@ const PokerTable = () => {
 							>
 								Your hand
 							</h4>
+							</div>
+
+							<div className='user-cards'>
+								{userCards.map((card, index) => (
+									<motion.img
+										key={index}
+										src={card.image}
+										alt={`User card ${index}`}
+										className='card'
+										custom={index}
+										initial='initial'
+										animate='animate'
+										variants={cardVariants}
+									/>
+								))}
+							</div>
 						</div>
 					</motion.div>
 				)}
@@ -323,6 +384,7 @@ const PokerTable = () => {
 							alt='Chips'
 							className='bank-icon'
 						/>
+						<img src='/assets/chip.png' alt='Chips' className='bank-icon' />
 						<motion.div
 							className='bank-value'
 							key={bank}

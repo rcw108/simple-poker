@@ -1,235 +1,377 @@
 // server.js
 
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
-const TonWeb = require('tonweb'); // Import TonWeb
+const TonWeb = require('tonweb');
+const { MongoClient } = require('mongodb'); // MongoDB Client
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 80;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins (or restrict to specific origins)
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 app.use(bodyParser.json());
 
-// In-memory user data store
-const users = {};
+// MongoDB connection URI (replace with your MongoDB URI)
+const uri = process.env.MONGO_URI || 'mongodb://localhost:27017';
+const dbName = 'simple_poker';
 
-// Initialize TonWeb with HTTP provider (using Toncenter's API)
-const tonweb = new TonWeb(new TonWeb.HttpProvider('https://toncenter.com/api/v2/jsonRPC'));
+// MongoDB connection and initialization
+let db;
 
-// Generate a new wallet for testing purposes
-// In production, you should generate a wallet separately and store the keys securely
-const seed = TonWeb.utils.newSeed();
-const keyPair = TonWeb.utils.keyPairFromSeed(seed);
+async function connectMongoDB() {
+  try {
+    const client = await MongoClient.connect(uri, { useUnifiedTopology: true });
+    console.log('Connected to MongoDB');
+    db = client.db(dbName);
+  } catch (err) {
+    console.error('Error connecting to MongoDB:', err.message);
+    process.exit(1); // Exit if there is an error connecting to MongoDB
+  }
+}
 
-// Create the wallet instance
-const WalletClass = tonweb.wallet.all.v3R2;
-const wallet = new WalletClass(tonweb.provider, {
-  publicKey: keyPair.publicKey,
-});
+// Call this function to initialize MongoDB connection
+connectMongoDB();
 
-// Get the wallet address
-let walletAddress;
-(async () => {
-  walletAddress = await wallet.getAddress();
-  console.log('Wallet Address:', walletAddress.toString(true, true, true));
-  console.log('Public Key:', TonWeb.utils.bytesToHex(keyPair.publicKey));
-  console.log('Secret Key:', TonWeb.utils.bytesToHex(keyPair.secretKey));
-  console.log('Seed (keep this secret):', TonWeb.utils.bytesToHex(seed));
+
+const tonweb = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC', { apiKey: process.env.TONCENTER_API_KEY }));
+
+const walletManager = (() => {
+  try {
+    const seed = TonWeb.utils.hexToBytes(process.env.TON_SEED);
+    const keyPair = TonWeb.utils.keyPairFromSeed(seed);
+    const WalletClass = tonweb.wallet.all.v3R2;
+    const wallet = new WalletClass(tonweb.provider, {
+      publicKey: keyPair.publicKey,
+    });
+
+    let walletAddress;
+    (async () => {
+      try {
+        walletAddress = await wallet.getAddress();
+        console.log('Wallet Address:', walletAddress.toString(true, true, true));
+
+        // Check seqno without deployment logic
+        let seqno = await wallet.methods.seqno().call();
+        if (seqno !== null) {
+          console.log('Wallet is already deployed.');
+        }
+      } catch (error) {
+        console.error('Error interacting with wallet:', error);
+      }
+    })();
+
+    const getWalletAddress = () => walletAddress;
+    const getKeyPair = () => keyPair;
+    const getWallet = () => wallet;
+
+    return { getWalletAddress, getKeyPair, getWallet };
+  } catch (error) {
+    console.error('Error initializing wallet:', error);
+    process.exit(1);
+  }
 })();
 
-// Function to verify Telegram authentication data
-function verifyTelegramAuth(initData) {
-  const secretKey = crypto
-    .createHash('sha256')
-    .update(process.env.TELEGRAM_BOT_TOKEN)
-    .digest();
-
-  const parsedData = new URLSearchParams(initData);
-  const dataCheckString = [];
-  const tgHash = parsedData.get('hash');
-
-  parsedData.forEach((value, key) => {
-    if (key !== 'hash') {
-      dataCheckString.push(`${key}=${value}`);
-    }
-  });
-
-  dataCheckString.sort();
-  const dataString = dataCheckString.join('\n');
-
-  const hmac = crypto
-    .createHmac('sha256', secretKey)
-    .update(dataString)
-    .digest('hex');
-
-  return hmac === tgHash;
-}
+// Conversion rates
+const USD_TO_GAME_VALUE = 100; // 1 USDT TON = 100 in-game value
 
 // Routes
 app.get('/', (req, res) => {
   res.send('Backend server is running!');
 });
 
-// Endpoint to verify Telegram user
-app.post('/api/verifyUser', (req, res) => {
-  const { initData } = req.body;
+function verifyTelegramAuth(initData, initDataUnsafe) {
+  // Debugging logs to see if initDataUnsafe is passed correctly
+  console.log('Init Data Unsafe in verifyTelegramAuth:', initDataUnsafe);
 
-  if (!verifyTelegramAuth(initData)) {
-    return res.status(403).json({ success: false, message: 'Invalid Telegram authentication data.' });
+  if (!initDataUnsafe || !initDataUnsafe.auth_date) {
+    console.error('Invalid initDataUnsafe, missing fields');
+    return false;
   }
 
-  const parsedData = new URLSearchParams(initData);
-  const userId = parsedData.get('id');
-  const firstName = parsedData.get('first_name');
-  const username = parsedData.get('username');
+  // Generate the secret key
+  const secretKey = crypto.createHmac('sha256', 'WebAppData')
+    .update(process.env.TELEGRAM_BOT_TOKEN)
+    .digest();
 
-  // Check if user exists, if not create a new user with default balance
-  if (!users[userId]) {
-    users[userId] = {
+  // Build the data check string
+  const dataCheckString = [
+    `auth_date=${initDataUnsafe.auth_date}`,
+    `query_id=${initDataUnsafe.query_id}`,
+    `user=${JSON.stringify(initDataUnsafe.user)}`
+  ].join('\n');
+
+  // Generate the HMAC of the data check string
+  const generatedHash = crypto.createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex');
+
+  // Compare the generated hash with the hash received from Telegram
+  if (generatedHash === initDataUnsafe.hash) {
+    return true; // Validation successful
+  } else {
+    console.error('Hash mismatch, invalid data');
+    return false; // Validation failed
+  }
+}
+
+app.post('/api/verifyUser', async (req, res) => {
+  console.log('Incoming verifyUser request:');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body); // Log the entire body
+  const { initDataUnsafe } = req.body;
+
+  // Add debugging logs
+  console.log('Received initDataUnsafe:', initDataUnsafe);
+
+  if (!initDataUnsafe || !initDataUnsafe.user || !initDataUnsafe.user.id) {
+    return res.status(400).json({ success: false, message: 'Invalid or missing user data.' });
+  }
+  const userId = initDataUnsafe.user.id;
+  const firstName = initDataUnsafe.user.first_name;
+  const username = initDataUnsafe.user.username;
+
+  try {
+    const usersCollection = db.collection('users');
+
+    // Check if the user already exists in the database
+    let user = await usersCollection.findOne({ id: userId });
+
+    if (user) {
+      console.log(`User ${userId} already exists in the database.`);
+      // You could update the user info here if needed
+      return res.json({ success: true, user });
+    }
+
+    // If the user does not exist, create a new user
+    user = {
       id: userId,
       firstName,
       username,
-      balance: 500, // Default starting balance
-      depositAddress: null, // We'll generate this later
-      processedTransactions: [], // To keep track of processed deposits
+      balance: 100,
+      processedTransactions: []
     };
-  }
 
-  res.json({ success: true, user: users[userId] });
+    await usersCollection.insertOne(user);
+    console.log(`Created new user: ${userId}`);
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error('Error verifying user:', err.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
 });
 
-// Endpoint to get user balance
-app.get('/api/getBalance', (req, res) => {
+app.get('/api/getBalance', async (req, res) => {
   const userId = req.query.userId;
 
-  const user = users[userId];
-
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found.' });
+  if (!userId) {
+    console.error('User ID is missing in the request.');
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
   }
 
-  res.json({ success: true, balance: user.balance });
+  try {
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne({ id: parseInt(userId) });
+
+    if (!user) {
+      console.error(`User not found: ${userId}`);
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Return the user's balance
+    res.json({ success: true, balance: user.balance });
+  } catch (err) {
+    console.error('Error retrieving balance:', err.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
 });
 
-// Endpoint to update user balance
-app.post('/api/updateBalance', (req, res) => {
+// Update user balance
+app.post('/api/updateBalance', async (req, res) => {
   const { userId, balance } = req.body;
 
-  const user = users[userId];
-
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found.' });
+  if (!userId) {
+    console.error('User ID is missing in the request.');
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
   }
 
-  user.balance = balance;
+  try {
+    const usersCollection = db.collection('users');
+    const result = await usersCollection.updateOne(
+      { _id: userId },
+      { $set: { balance } }
+    );
 
-  res.json({ success: true });
+    if (result.matchedCount === 0) {
+      console.error(`User not found: ${userId}`);
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    console.log(`Updated balance for user ${userId}: ${balance}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating balance:', err.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
 });
 
-// Endpoint to get deposit address and comment
-app.get('/api/getDepositAddress', async (req, res) => {
+// Endpoint to get deposit address and comment (Admin wallet)
+app.get('/api/getDepositAddress', (req, res) => {
   const userId = req.query.userId;
+
+  if (!userId) {
+    console.error('User ID is missing in the request.');
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  }
 
   const user = users[userId];
 
   if (!user) {
+    console.error(`User not found: ${userId}`);
     return res.status(404).json({ success: false, message: 'User not found.' });
   }
 
-  // Get the main wallet address
-  const addressString = walletAddress.toString(true, true, true);
+  const addressString = walletManager.getWalletAddress()?.toString(true, true, true);
 
-  // Provide instructions to the user
+  if (!addressString) {
+    console.error('Failed to retrieve wallet address.');
+    return res.status(500).json({ success: false, message: 'Failed to retrieve wallet address.' });
+  }
+
   res.json({
     success: true,
     address: addressString,
-    comment: userId, // Instruct the user to include this comment
+    comment: userId, // User ID will be used as the comment for tracking deposits
   });
 });
 
-// Endpoint to handle withdrawal requests
+// Endpoint to handle withdrawal requests (From Admin wallet to User wallet)
 app.post('/api/withdraw', async (req, res) => {
   let { userId, amount, toAddress } = req.body;
+
+  if (!userId) {
+    console.error('User ID is missing in the request.');
+    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  }
 
   const user = users[userId];
 
   if (!user) {
+    console.error(`User not found: ${userId}`);
     return res.status(404).json({ success: false, message: 'User not found.' });
   }
 
-  amount = parseFloat(amount);
+  // Convert in-game value to USDT TON
+  const usdtAmount = amount / USD_TO_GAME_VALUE;
 
   if (user.balance < amount) {
+    console.error(`Insufficient balance for user ${userId}. Requested: ${amount}, Available: ${user.balance}`);
     return res.status(400).json({ success: false, message: 'Insufficient balance.' });
   }
 
   try {
-    // Get the next sequence number (seqno) for the wallet
-    const seqno = await wallet.methods.seqno().call();
+    const wallet = walletManager.getWallet();
+    const keyPair = walletManager.getKeyPair();
+    let seqno = await getValidSeqno(wallet);
 
-    // Prepare the transfer
+    console.log(`Attempting withdrawal of ${usdtAmount} USDT TON to address ${toAddress} with seqno ${seqno}`);
+
     const transfer = wallet.methods.transfer({
       secretKey: keyPair.secretKey,
       toAddress: toAddress,
-      amount: TonWeb.utils.toNano(amount), // Convert TON to nanotons
+      amount: TonWeb.utils.toNano(usdtAmount.toString()),
       seqno: seqno,
       payload: null,
       sendMode: 3,
     });
 
-    // Send the transfer
     await transfer.send();
 
-    // Update user's balance
     user.balance -= amount;
 
-    // Log the withdrawal
-    console.log(`Processed withdrawal of ${amount} TON to ${toAddress} for user ${userId}`);
+    console.log(`Processed withdrawal of ${usdtAmount} USDT TON to ${toAddress} for user ${userId}`);
 
     res.json({ success: true, message: 'Withdrawal processed.' });
   } catch (error) {
     console.error('Error processing withdrawal:', error);
-    res.status(500).json({ success: false, message: 'Withdrawal failed.' });
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+    }
+    res.status(500).json({ success: false, message: 'Withdrawal failed.', error: error.message });
   }
 });
 
-// Function to check for new deposits
+// Function to get a valid seqno with retry logic
+async function getValidSeqno(wallet) {
+  let retries = 5;  // Set the number of retries
+  let seqno = null;
+
+  while (retries > 0) {
+    seqno = await wallet.methods.seqno().call();
+    if (seqno !== null && seqno >= 0) {
+      return seqno;
+    }
+    retries--;
+    console.log(`Retrying to get seqno... Attempts left: ${retries}`);
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+  }
+  throw new Error('Invalid seqno retrieved. Please try again later.');
+}
+
+// Function to check for new deposits (Admin wallet)
 async function checkForDeposits() {
   try {
-    const addressString = walletAddress.toString(true, true, true);
+    const addressString = walletManager.getWalletAddress()?.toString(true, true, true);
+    if (!addressString) {
+      console.error('Failed to retrieve wallet address for deposit check.');
+      return;
+    }
 
-    // Fetch recent transactions
+    console.log(`Checking for deposits to address: ${addressString}`);
+
+    // Get the last 10 transactions
     const response = await tonweb.provider.getTransactions(addressString, 10);
 
     for (const tx of response) {
       if (tx.in_msg && tx.in_msg.value > 0) {
-        const valueNano = tx.in_msg.value; // Amount in nanotons
-        const valueTon = TonWeb.utils.fromNano(valueNano); // Convert to TON
+        const valueNano = tx.in_msg.value;
+        const valueTon = TonWeb.utils.fromNano(valueNano);  // Convert to TON
         let comment = null;
 
-        // Check if there's a comment (transaction message)
+        // Extract comment (user ID) from the transaction
         if (tx.in_msg.msg_data && tx.in_msg.msg_data['@type'] === 'msg.dataText') {
           comment = tx.in_msg.msg_data.text;
         }
 
-        // If there's a comment and it matches a user ID
-        if (comment && users[comment]) {
+        if (comment) {
           const userId = comment;
-          const user = users[userId];
 
-          // Check if this transaction has already been processed
-          if (!user.processedTransactions.includes(tx.transaction_id.hash)) {
+          // Check if the user exists
+          const usersCollection = db.collection('users');
+          const user = await usersCollection.findOne({ _id: userId });
+
+          if (user && !user.processedTransactions.includes(tx.transaction_id.hash)) {
+            const gameValue = valueTon * USD_TO_GAME_VALUE;  // Convert TON to in-game value
+
             // Update user's balance
-            user.balance += parseFloat(valueTon);
+            await usersCollection.updateOne(
+              { _id: userId },
+              { 
+                $inc: { balance: gameValue },
+                $push: { processedTransactions: tx.transaction_id.hash }
+              }
+            );
 
-            // Mark transaction as processed
-            user.processedTransactions.push(tx.transaction_id.hash);
-
-            console.log(`User ${userId} deposited ${valueTon} TON`);
+            console.log(`User ${userId} deposited ${valueTon} TON (${gameValue} in-game value)`);
           }
         }
       }
@@ -238,7 +380,6 @@ async function checkForDeposits() {
     console.error('Error checking for deposits:', error);
   }
 }
-
 // Set an interval to check for deposits every minute
 setInterval(checkForDeposits, 60000);
 
@@ -246,3 +387,42 @@ setInterval(checkForDeposits, 60000);
 app.listen(port, () => {
   console.log(`Backend server is running on port ${port}`);
 });
+
+
+// async function mockTransaction() {
+//   const userId = 'test_user';  // Hardcoded for now
+//   const mockTxId = `tx_${Math.random().toString(36).substr(2, 9)}`;  // Simulate a transaction ID
+//   const valueTon = 1;  // Simulate receiving 1 TON
+
+//   try {
+//     // Fetch user from MongoDB
+//     const usersCollection = db.collection('users');
+//     const user = await usersCollection.findOne({ _id: userId });
+
+//     if (!user) {
+//       console.error(`User not found: ${userId}`);
+//       return;
+//     }
+
+//     // Check if the transaction has been processed
+//     if (!user.processedTransactions.includes(mockTxId)) {
+//       const gameValue = valueTon * USD_TO_GAME_VALUE;  // Convert TON to in-game value
+
+//       // Update user's balance and add transaction to processedTransactions
+//       await usersCollection.updateOne(
+//         { _id: userId },
+//         { 
+//           $inc: { balance: gameValue }, 
+//           $push: { processedTransactions: mockTxId } 
+//         }
+//       );
+
+//       console.log(`Mock transaction processed for user ${userId}: ${valueTon} TON (${gameValue} in-game value)`);
+//     }
+//   } catch (error) {
+//     console.error('Error processing mock transaction:', error.message);
+//   }
+// }
+
+// // Call mockTransaction to simulate a transaction every 30 seconds (just for testing)
+// setInterval(mockTransaction, 30000);
