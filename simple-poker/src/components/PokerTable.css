@@ -1,177 +1,486 @@
-html, body {
-    overflow-x: hidden; /* Prevent horizontal scrolling */
-    overflow-y: hidden; /* Prevent vertical scrolling if necessary */
-  }
-  
-  .poker-table {
-    overflow: hidden;
-  }
-  
-  .poker-table {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100vh;
-    background-color: #333;
-    color: white;
-  }
-  
-  /* Header Section */
-  .header {
-    position: relative;
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  
-  .cards-header {
-    width: 100%;  /* Ensure it takes full width */
-    height: 120px;  /* Adjust the height to a smaller size */
-    object-fit: contain; /* Make sure the image scales while maintaining aspect ratio */
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1;  /* Ensure it doesn't overlap other content */
-  }
-  
-  .crown-section {
-    position: absolute;
-    right: 20px;
-    top: 10px;
-    z-index: 2; /* Keep the crown and text on top of the card image */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .crown-icon {
-    width: 40px;
-    margin-bottom: 5px;
-  }
-  
-  .chips {
-    font-size: 18px;
-    color: yellow;
-  }
-  
-  /* Cards Section */
-  .cards-section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    margin-top: 150px; /* Adjust to leave space for the header */
-    gap: 20px;
-  }
-  
-  .table-cards, .user-cards {
-    display: flex;
-    gap: 10px; /* Space between the cards */
-  }
-  
-  .card {
-    width: 50px;
-    height: 70px; /* Adjust the size as per your design */
-    object-fit: contain;
-  }
-  
-  .flash-text {
-    font-size: 24px;
-  }
-  
-  .win-text {
-    font-size: 30px;
-    font-weight: bold;
-    color: yellow;
-  }
-  
-  /* Controls Section */
-  .controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    width: 100%;
-    margin-bottom: 30px;
-  }
-  
-  /* Bank and Bet with centered values */
-  .bank, .bet {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .bank-icon-container, .bet-icon-container {
-    position: relative;
-    width: 70px; /* Increased size to fit the value */
-    height: 70px; /* Adjust size */
-  }
-  
-  .bank-icon, .bet-icon {
-    width: 100%;
-    height: auto;
-  }
-  
-  .bank-value, .bet-value {
-    position: absolute;
-    top: 31%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
-    color: #000;
-    font-size: 10px;
-  }
-  
-  .bank-text, .bet-text {
-    margin-top: 1px;
-    font-size: 16px;
-    text-align: center;
-  }
-  
-  /* Deal Button */
-  .deal-button {
-    background-color: yellow;
-    border: none;
-    padding: 10px 40px;
-    font-size: 18px;
-    cursor: pointer;
-    margin: 0 20px;
-  }
-  
-  /* Bet Controls for + and - */
-  .bet-controls {
-    display: flex;
-    margin-top: 5px;
-  }
-  
-  .bet-minus, .bet-plus {
-    background-color: yellow;
-    border: none;
-    font-size: 18px;
-    padding: 5px 10px;
-    margin: 0 5px;
-    cursor: pointer;
-  }
-  
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+html,
+body {
+	overflow-x: hidden; /* Prevent horizontal scrolling */
+	overflow-y: hidden; /* Prevent vertical scrolling if necessary */
+	background-color: #1d1717;
+}
+
+.logo-screen-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+	margin-top: 150px;
+}
+
+.reveal-button,
+.new-game-button {
+	cursor: pointer;
+	background-color: #ffe100;
+	width: 150px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 35px;
+	font-size: 16px;
+	border: none;
+	outline: none;
+	transition: all 0.3s ease-in-out;
+}
+
+.reveal-button:hover {
+	background-color: #1feb95;
+}
+
+.dummy {
+	width: 65px;
+}
+
+.up-down {
+	width: 150px;
+	margin-top: 10px;
+	height: 35px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: #ffe100;
+	position: relative;
+	cursor: pointer;
+	pointer-events: none;
+	transition: all 0.3s ease-in-out;
+	color: #000;
+}
+
+.down {
+	position: absolute;
+	content: '';
+	width: 50%;
+	height: 100%;
+	background-color: transparent;
+	left: 0;
+	cursor: pointer;
+	z-index: 4;
+	pointer-events: all;
+}
+
+.icon-minus,
+.icon-plus {
+	position: absolute;
+	content: '';
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-size: 18px;
+	width: 21px;
+	height: 21px;
+	background-color: #fff;
+	color: #000;
+	border-radius: 50%;
+	border: 1px solid black;
+	left: -10px;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.icon-minus span,
+.icon-plus span {
+	line-height: 18px;
+	font-size: 22px;
+	padding-bottom: 2px;
+}
+
+.icon-plus span {
+	padding-bottom: 3px;
+}
+
+.icon-plus {
+	right: -10px;
+	left: unset;
+}
+
+.up-down-text {
+	position: relative;
+	z-index: 3;
+	cursor: pointer;
+}
+
+.up {
+	position: absolute;
+	cursor: pointer;
+	content: '';
+	width: 50%;
+	height: 100%;
+	background-color: transparent;
+	right: 0;
+	z-index: 4;
+	pointer-events: all;
+}
+
+.logo-screen {
+	border-radius: 10px;
+	width: 350px;
+	height: 358px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	img {
+		width: 160px;
+		height: 160px;
+		object-fit: contain;
+	}
+}
+
+.poker-table {
+	overflow: hidden;
+}
+
+.poker-table {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	height: 97vh;
+	background-color: #1d1717;
+	color: white;
+}
+
+/* Header Section */
+.header {
+	position: relative;
+	width: 100%;
+	padding: 10px;
+	box-sizing: border-box;
+}
+
+.cards-header {
+	width: 100%; /* Ensure it takes full width */
+	height: 120px; /* Adjust the height to a smaller size */
+	object-fit: contain; /* Make sure the image scales while maintaining aspect ratio */
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 1; /* Ensure it doesn't overlap other content */
+}
+
+.crown-section {
+	position: fixed;
+	right: 20px;
+	top: 55vh;
+	transform: translateY(-50%);
+	z-index: 5; /* Keep the crown and text on top of the card image */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	cursor: pointer;
+}
+
+.crown-icon {
+	width: 27px;
+	margin-bottom: 5px;
+}
+
+.chips {
+	font-size: 18px;
+	color: #fff;
+}
+
+/* Cards Section */
+.cards-section {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	align-items: center;
+	gap: 40px;
+	height: 100%;
+}
+
+.table-cards,
+.user-cards,
+.computer-cards {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 10px; /* Space between the cards */
+}
+
+.computer-cards {
+	margin-top: 40px;
+}
+
+.card {
+	width: 70px;
+	height: 100px; /* Adjust the size as per your design */
+	object-fit: contain;
+	position: relative;
+}
+
+.flash-text {
+	display: block;
+	font-size: 24px;
+	position: absolute;
+	content: '';
+	top: 30%;
+	left: 0%;
+	width: 100%;
+}
+
+.win-text {
+	font-size: 30px;
+	font-weight: bold;
+	color: #ffe100;
+	position: absolute;
+	content: '';
+	top: 65%;
+	left: 0;
+	width: 100%;
+}
+
+/* Controls Section */
+.controls {
+	display: flex;
+	justify-content: space-between;
+	padding: 20px;
+	margin-bottom: 30px;
+	min-height: 165px;
+	max-height: 165px;
+	margin-top: -50px;
+}
+
+.bank-icon-container,
+.bet-icon-container {
+	position: relative;
+	width: 70px; /* Increased size to fit the value */
+	height: 70px; /* Adjust size */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.bank-icon,
+.bet-icon {
+	width: 100%;
+	height: auto;
+	object-fit: contain;
+}
+
+.bank-value,
+.bet-value {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) !important;
+	font-weight: bold;
+	color: #000;
+	font-size: 10px;
+}
+
+.bank-text,
+.bet-text {
+	margin-top: 1px;
+	font-size: 16px;
+	text-align: center;
+}
+
+/* Deal Button */
+.deal-button,
+.new-game-button,
+.reveal-button,
+.new-game-button {
+	background-color: #ffe100;
+	border: none;
+	height: 50px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-family: 'Inter', sans-serif;
+	font-size: 18px;
+	font-weight: 500;
+	padding: 0 10px;
+	width: 170px;
+	border: 2px solid #fff;
+	border-radius: 12px;
+	cursor: pointer;
+	margin: 0 20px;
+	transition: all 0.3s ease-in-out;
+}
+
+.deal-button:hover,
+.new-game-button:hover {
+	background-color: #1feb95;
+}
+
+/* Bet Controls for + and - */
+.bet-controls {
+	display: flex;
+	margin-top: 5px;
+}
+
+.bet-minus,
+.bet-plus {
+	background-color: rgba(255, 255, 255, 0.34);
+	color: #fff;
+	border: none;
+	font-size: 22px;
+	width: 30px;
+	height: 30px;
+	cursor: pointer;
+	transition: all 0.3s ease-in-out;
+	border-radius: 50%;
+}
+
+.bet-minus {
+	margin-right: 5px;
+}
+
+.bet-minus:hover {
+	background-color: rgb(215, 50, 50);
+}
+
+.bet-plus:hover {
+	background-color: #1feb95;
+}
+
+.add-balance {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.7);
+	border: 2px solid #000;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: #000;
+	margin: 0 auto;
+	margin-top: 5px;
+}
+
+.flash-text,
+.win-text {
+	text-align: center;
+	font-family: Helvetica, sans-serif;
+}
+
+.cards-wrap {
+	height: 100%;
+}
+
+.card-container {
+	width: 70px;
+	height: 100px;
+	perspective: 1000px;
+}
+
+.card-inner {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	text-align: center;
+	transform-style: preserve-3d;
+}
+
+.card-face {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+.card-front {
+	transform: rotateY(180deg);
+}
+
+.card-back {
+	transform: rotateY(0deg);
+}
+
+.card-face img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.brightAnimation {
+	animation: bright 0.3s;
+	animation-delay: 1.8s;
+}
+
+@keyframes bright {
+	0% {
+		filter: brightness(1);
+	}
+	100% {
+		filter: brightness(0.5);
+	}
+}
+
+.btns-section {
+	margin-top: 80px;
+}
+
 /* Adjust layout for mobile screens */
 @media (max-width: 600px) {
-    .controls {
-        flex-direction: row;  /* Change to row to align items in a row */
-        justify-content: space-around;  /* Spread out controls evenly */
-        align-items: center;
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 20px;
-    }
-    
-    .bank, .bet {
-        margin-bottom: 0; 
-    }
+	.controls {
+		flex-direction: row; /* Change to row to align items in a row */
+		margin-bottom: 20px;
+		min-height: 145px;
+		max-height: 145px;
+	}
 
-    .deal-button {
-        margin: 0; 
-        padding: 10px 20px;  
-    }
+	.table-cards {
+		margin-top: 0px;
+	}
+
+	.btns-section {
+		margin-top: 0px;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+	}
+
+	.bank,
+	.bet {
+		margin-bottom: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		height: 100%;
+	}
+
+	.deal-button {
+		margin: 0;
+		padding: 10px 20px;
+	}
+
+	.cards-section {
+		margin-top: 0;
+		height: 100%;
+		justify-content: space-between;
+	}
+
+	.card {
+		width: 70px;
+		height: 100px;
+	}
+
+	.flash-text {
+		margin-bottom: 20px;
+		text-align: center;
+		font-size: 26px;
+	}
+	.win-text {
+		top: 68%;
+		left: 0;
+		font-size: 25px;
+		margin-bottom: 60px;
+		text-align: center;
+	}
+
+	.table-cards,
+	.user-cards,
+	.computer-cards {
+		justify-content: center;
+	}
 }
