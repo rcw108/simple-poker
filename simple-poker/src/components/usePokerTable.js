@@ -1,7 +1,17 @@
 import { useState } from 'react'
+import {
+	getFlush,
+	getFourOfAKind,
+	getFullHouse,
+	getPair,
+	getStraight,
+	getThreeOfAKind,
+	getTwoPair,
+} from './combinations'
 import { rankMap, ranks, suits } from './poker.data'
 
 export const usePokerTable = (telegramUser, bank, setBank) => {
+	const [showConfetti, setShowConfetti] = useState(false)
 	const [gameStarted, setGameStarted] = useState(false)
 	const [bet, setBet] = useState(5)
 	const [tableCards, setTableCards] = useState([])
@@ -11,15 +21,15 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 	const [winnings, setWinnings] = useState(0)
 	const [gameStage, setGameStage] = useState('initial') // 'initial', 'betting', 'reveal'
 
-	const [withdrawAmount, setWithdrawAmount] = useState('')
-	const [withdrawAddress, setWithdrawAddress] = useState('')
+	let allCards = []
 
-	const allCards = []
+	const [newAllCards, setNewAllCards] = useState([])
 
 	const emptyCard = {
 		rank: 'unknown',
 		suit: 'Empty',
 		image: '/assets/cards/empty.png',
+		combination: false,
 	}
 
 	// Build the allCards array
@@ -39,10 +49,14 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 			allCards.push({
 				rank,
 				suit: suitName,
+				emptyCard: '/assets/cards/empty.png',
 				image: `/assets/cards/${rankStr}${suit}.png`,
+				combination: false,
 			})
 		})
 	})
+
+	console.log('start game', allCards)
 
 	const increaseBet = () => {
 		if (bet < bank) setBet(bet + 5)
@@ -78,99 +92,125 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		return results
 	}
 
-	const evaluateHand = cards => {
+	const evaluateHand = (cards, playerHandCards = []) => {
 		// Sort cards by rank
 		const sortedCards = cards.slice().sort((a, b) => b.rank - a.rank)
 
-		// Check for Flush
-		const suitsCount = {}
-		cards.forEach(card => {
-			suitsCount[card.suit] = (suitsCount[card.suit] || 0) + 1
-		})
-		const flushSuit = Object.keys(suitsCount).find(
-			suit => suitsCount[suit] >= 5
-		)
-		const isFlush = flushSuit !== undefined
-
-		// Check for Straight
-		let ranks = [...new Set(sortedCards.map(card => card.rank))]
-		let isStraight = false
-
-		// Handle low-Ace straight (A-2-3-4-5)
-		if (ranks.includes(14)) {
-			ranks.unshift(1)
+		// Add playerHandCards to the evaluation to use in tiebreaks
+		const handEvaluation = {
+			playerHandCards, // Сохраняем карты в руке для сравнения при ничьей
+			sortedCards,
 		}
 
-		for (let i = 0; i <= ranks.length - 5; i++) {
-			if (
-				ranks[i] - 1 === ranks[i + 1] &&
-				ranks[i] - 2 === ranks[i + 2] &&
-				ranks[i] - 3 === ranks[i + 3] &&
-				ranks[i] - 4 === ranks[i + 4]
-			) {
-				isStraight = true
-				break
-			}
-		}
+		// Check for each combination and get the specific cards involved
+		const fourOfKindCards = getFourOfAKind(cards)
+		const fullHouseCards = getFullHouse(cards)
+		const flushCards = getFlush(cards)
+		const straightCards = getStraight(cards)
+		const threeOfKindCards = getThreeOfAKind(cards)
+		const twoPairCards = getTwoPair(cards)
+		const pairCards = getPair(cards)
+
+		const highestHandCard = playerHandCards.length
+			? playerHandCards.reduce((highest, current) =>
+					current.rank > highest.rank ? current : highest
+			  )
+			: null
 
 		// Check for Straight Flush and Royal Flush
-		let isStraightFlush = false
-		let isRoyalFlush = false
-		if (isFlush) {
-			const flushCards = cards.filter(card => card.suit === flushSuit)
-			const flushRanks = [...new Set(flushCards.map(card => card.rank))]
-			if (flushRanks.includes(14)) {
-				flushRanks.unshift(1)
-			}
-			flushRanks.sort((a, b) => b - a)
-			for (let i = 0; i <= flushRanks.length - 5; i++) {
-				if (
-					flushRanks[i] - 1 === flushRanks[i + 1] &&
-					flushRanks[i] - 2 === flushRanks[i + 2] &&
-					flushRanks[i] - 3 === flushRanks[i + 3] &&
-					flushRanks[i] - 4 === flushRanks[i + 4]
-				) {
-					isStraightFlush = true
-					if (flushRanks[i] === 14) {
-						isRoyalFlush = true
-					}
-					break
-				}
-			}
-		}
+		const isRoyalFlush =
+			flushCards.length === 5 &&
+			straightCards.length === 5 &&
+			flushCards.every(card => straightCards.includes(card)) &&
+			flushCards[0].rank === 14
 
-		// Count card occurrences
-		const counts = {}
-		cards.forEach(card => {
-			counts[card.rank] = (counts[card.rank] || 0) + 1
-		})
-		const countsValues = Object.values(counts)
-		const hasFourOfKind = countsValues.includes(4)
-		const hasThreeOfKind = countsValues.includes(3)
-		const pairs = countsValues.filter(count => count === 2).length
+		const isStraightFlush =
+			flushCards.length === 5 &&
+			straightCards.length === 5 &&
+			flushCards.every(card => straightCards.includes(card))
 
-		// Determine hand rank and fixed winnings
+		// Determine hand rank and corresponding cards
 		switch (true) {
 			case isRoyalFlush:
-				return { hand: 'Royal Flush', winnings: bet * 100 }
+				return {
+					...handEvaluation,
+					hand: 'Royal Flush',
+					winnings: bet * 100,
+					combination: flushCards,
+					highestHandCard,
+				}
 			case isStraightFlush:
-				return { hand: 'Straight Flush', winnings: bet * 20 }
-			case hasFourOfKind:
-				return { hand: 'Four of a Kind', winnings: bet * 10 }
-			case hasThreeOfKind && pairs >= 1:
-				return { hand: 'Full House', winnings: bet * 7 }
-			case isFlush:
-				return { hand: 'Flush', winnings: bet * 5 }
-			case isStraight:
-				return { hand: 'Straight', winnings: bet * 2 }
-			case hasThreeOfKind:
-				return { hand: 'Three of a Kind', winnings: bet * 1.5 }
-			case pairs >= 2:
-				return { hand: 'Two Pair', winnings: bet * 1 }
-			case pairs === 1:
-				return { hand: 'One Pair', winnings: bet * 0.5 }
+				return {
+					...handEvaluation,
+					hand: 'Straight Flush',
+					winnings: bet * 20,
+					combination: flushCards,
+					highestHandCard,
+				}
+			case fourOfKindCards.length === 4:
+				return {
+					...handEvaluation,
+					hand: 'Four of a Kind',
+					winnings: bet * 10,
+					combination: fourOfKindCards,
+					highestHandCard,
+				}
+			case fullHouseCards.length === 5:
+				return {
+					...handEvaluation,
+					hand: 'Full House',
+					winnings: bet * 7,
+					combination: fullHouseCards,
+					highestHandCard,
+				}
+			case flushCards.length === 5:
+				return {
+					...handEvaluation,
+					hand: 'Flush',
+					winnings: bet * 5,
+					combination: flushCards,
+					highestHandCard,
+				}
+			case straightCards.length === 5:
+				return {
+					...handEvaluation,
+					hand: 'Straight',
+					winnings: bet * 2,
+					combination: straightCards,
+					highestHandCard,
+				}
+			case threeOfKindCards.length === 3:
+				return {
+					...handEvaluation,
+					hand: 'Three of a Kind',
+					winnings: bet * 1.5,
+					combination: threeOfKindCards,
+					highestHandCard,
+				}
+			case twoPairCards.length === 4:
+				return {
+					...handEvaluation,
+					hand: 'Two Pair',
+					winnings: bet * 1,
+					combination: twoPairCards,
+					highestHandCard,
+				}
+			case pairCards.length === 2:
+				return {
+					...handEvaluation,
+					hand: 'One Pair',
+					winnings: bet * 0.5,
+					combination: pairCards,
+					highestHandCard,
+				}
 			default:
-				return { hand: 'High Card', winnings: 0 }
+				return {
+					...handEvaluation,
+					hand: 'High Card',
+					winnings: 0,
+					combination: [sortedCards[0]],
+					highestHandCard: sortedCards[0],
+				}
 		}
 	}
 
@@ -184,6 +224,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 
 		const shuffledDeck = shuffleArray([...allCards])
 		const newUserCards = shuffledDeck.slice(0, 2)
+		setNewAllCards([...shuffledDeck.slice(2)])
+		console.log('newAllCards', newAllCards)
 		setUserCards(newUserCards)
 		setComputerCards([emptyCard, emptyCard])
 		setTableCards([emptyCard, emptyCard, emptyCard, emptyCard, emptyCard])
@@ -191,62 +233,162 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		setWinnings(0)
 	}
 
+	const compareHighCards = (hand1, hand2) => {
+		// Ensure valid inputs
+		const playerHandCards1 = hand1?.playerHandCards || []
+		const playerHandCards2 = hand2?.playerHandCards || []
+
+		// If no cards to compare, declare a tie
+		if (!playerHandCards1.length || !playerHandCards2.length) {
+			return { winner: 'tie', card: null }
+		}
+
+		// Sort both hands by rank in descending order
+		const sortedHand1 = [...playerHandCards1].sort((a, b) => b.rank - a.rank)
+		const sortedHand2 = [...playerHandCards2].sort((a, b) => b.rank - a.rank)
+
+		// Compare highest cards, then second highest, and so on
+		for (let i = 0; i < Math.min(sortedHand1.length, sortedHand2.length); i++) {
+			if (sortedHand1[i].rank > sortedHand2[i].rank) {
+				return {
+					winner: 'user',
+					card: sortedHand1[i],
+				}
+			} else if (sortedHand2[i].rank > sortedHand1[i].rank) {
+				return {
+					winner: 'trinity',
+					card: sortedHand2[i],
+				}
+			}
+		}
+
+		// If all cards are equal, it's a tie
+		return {
+			winner: 'tie',
+			card: sortedHand1[0],
+		}
+	}
+
 	const revealCards = () => {
 		setGameStage('reveal')
-		const shuffledDeck = shuffleArray([...allCards])
-		const newComputerCards = shuffledDeck.slice(2, 4)
-		const newTableCards = shuffledDeck.slice(4, 9)
+		console.log('all cards', newAllCards)
+		const newUserCards = [...userCards]
+		const newComputerCards = newAllCards.slice(2, 4)
+		const newTableCards = newAllCards.slice(4, 9)
 
 		setComputerCards(newComputerCards)
 		setTableCards(newTableCards)
 
-		const allUserCards = [...userCards, ...newTableCards]
+		const allUserCards = [...newUserCards, ...newTableCards]
 		const allComputerCards = [...newComputerCards, ...newTableCards]
 
 		const userCombinations = getCombinations(allUserCards, 5)
 		const computerCombinations = getCombinations(allComputerCards, 5)
 
-		let bestUserHand = { winnings: 0 }
+		let bestUserHand = { winnings: 0, combination: [], hand: '' }
 		userCombinations.forEach(hand => {
-			const evaluation = evaluateHand(hand)
+			const evaluation = evaluateHand(hand, newUserCards)
 			if (evaluation.winnings > bestUserHand.winnings) {
 				bestUserHand = evaluation
 			}
 		})
 
-		let bestComputerHand = { winnings: 0 }
+		let bestComputerHand = { winnings: 0, combination: [], hand: '' }
 		computerCombinations.forEach(hand => {
-			const evaluation = evaluateHand(hand)
+			const evaluation = evaluateHand(hand, newComputerCards)
 			if (evaluation.winnings > bestComputerHand.winnings) {
 				bestComputerHand = evaluation
 			}
 		})
 
+		let winningCombination = []
 		let newWinnings = 0
+
+		if (bestUserHand.winnings === bestComputerHand.winnings) {
+			const comparison = compareHighCards(bestUserHand, bestComputerHand)
+
+			switch (comparison.winner) {
+				case 'user':
+					setResult(
+						`You win with ${bestUserHand.hand} (High Card: ${comparison.card.rank})`
+					)
+					newWinnings = bestUserHand.winnings
+					winningCombination = bestUserHand.combination
+					break
+				case 'trinity':
+					setResult(
+						`Trinity wins with ${bestComputerHand.hand} (High Card: ${comparison.card.rank})`
+					)
+					newWinnings = 0
+					winningCombination = bestComputerHand.combination
+					break
+				case 'tie':
+					setResult(`It's a tie with ${bestUserHand.hand}!`)
+					newWinnings = bet
+					winningCombination = bestUserHand.combination
+					break
+				default:
+					break
+			}
+		}
+
 		if (bestUserHand.winnings > bestComputerHand.winnings) {
-			setResult(`You win with  ${bestUserHand.hand}!`)
+			setResult(`You win with ${bestUserHand.hand}!`)
 			newWinnings = bestUserHand.winnings
+			winningCombination = bestUserHand.combination
 		} else if (bestUserHand.winnings < bestComputerHand.winnings) {
 			setResult(`Trinity wins with ${bestComputerHand.hand}!`)
 			newWinnings = 0
+			winningCombination = bestComputerHand.combination
 		} else {
-			setResult(
-				`It's a tie with ${
-					bestUserHand.hand === undefined ? 'High Card' : bestUserHand.hand
-				}!`
-			)
-			newWinnings = bet
+			// Tie - compare cards in hand
+			const comparison = compareHighCards(bestUserHand, bestComputerHand)
+
+			switch (comparison.winner) {
+				case 'user':
+					setResult(`You win with ${bestUserHand.hand}`)
+					newWinnings = bestUserHand.winnings
+					// Important: Use the full winning combination, not just the high card
+					winningCombination = bestUserHand.combination
+					break
+				case 'trinity':
+					setResult(`Trinity wins with ${bestComputerHand.hand}`)
+					newWinnings = 0
+					// Important: Use the full winning combination, not just the high card
+					winningCombination = bestComputerHand.combination
+					break
+				case 'tie':
+					setResult(`It's a tie with ${bestUserHand.hand}!`)
+					newWinnings = bet
+					winningCombination = bestUserHand.combination
+					break
+				default:
+					break
+			}
 		}
 
+		const updateCombinationFlag = (cards, winningCombination) => {
+			return cards.map(card => ({
+				...card,
+				combination: winningCombination.some(
+					winCard => winCard.rank === card.rank && winCard.suit === card.suit
+				),
+			}))
+		}
+
+		setUserCards(updateCombinationFlag(newUserCards, winningCombination))
+		setComputerCards(
+			updateCombinationFlag(newComputerCards, winningCombination)
+		)
+		setTableCards(updateCombinationFlag(newTableCards, winningCombination))
+
 		setWinnings(newWinnings)
-		setBank(prevBank => {
-			const newBalance = prevBank - bet + newWinnings
-			return newBalance
-		})
+		setBank(prevBank => prevBank - bet + newWinnings)
 	}
 
 	const startNewGame = () => {
-		setGameStage('initial')
+		setShowConfetti(true)
+		setGameStage('betting')
 		setGameStarted(false)
 		setUserCards([])
 		setComputerCards([])
@@ -254,57 +396,25 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		setResult('')
 		setWinnings(0)
 		setBet(5)
+		setTimeout(() => {
+			/* `setShowConfetti(false)` is a function call that updates the state variable `showConfetti` to
+			`false`. This means that it will hide or stop the confetti animation on the poker table interface
+			by setting the `showConfetti` state to `false`. */
+			// setShowConfetti(false)
+			dealInitialCards()
+		}, 500)
 	}
 
-	// Update balance on backend
-	// fetch('/api/updateBalance', {
-	// 	method: 'POST',
-	// 	headers: { 'Content-Type': 'application/json' },
-	// 	body: JSON.stringify({
-	// 		userId: telegramUser.id,
-	// 		balance: newBalance,
-	// 	}),
-	// })
-	// 	.then(res => res.json())
-	// 	.then(data => {
-	// 		if (!data.success) {
-	// 			console.error('Error updating balance:', data.message)
-	// 		}
-	// 	})
-	// 	.catch(error => {
-	// 		console.error('Error updating balance:', error)
-	// 	})
-
-	// Handle withdrawal
-	const handleWithdraw = e => {
-		e.preventDefault()
-
-		fetch('/api/withdraw', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				userId: telegramUser.id,
-				amount: withdrawAmount,
-				toAddress: withdrawAddress,
-			}),
-		})
-			.then(res => res.json())
-			.then(data => {
-				if (data.success) {
-					alert('Withdrawal processed!')
-					// Update balance on frontend
-					const newBalance = bank - parseFloat(withdrawAmount)
-					setBank(newBalance)
-					setWithdrawAmount('')
-					setWithdrawAddress('')
-				} else {
-					alert(`Error: ${data.message}`)
-				}
-			})
-			.catch(error => {
-				console.error('Error processing withdrawal:', error)
-			})
-	}
+	// const startNewGame = () => {
+	// 	setGameStage('initial')
+	// 	setGameStarted(false)
+	// 	setUserCards([])
+	// 	setComputerCards([])
+	// 	setTableCards([])
+	// 	setResult('')
+	// 	setWinnings(0)
+	// 	setBet(5)
+	// }
 
 	return {
 		bank,
@@ -323,5 +433,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		startNewGame,
 		gameStarted,
 		gameStage,
+		showConfetti,
+		setShowConfetti,
 	}
 }

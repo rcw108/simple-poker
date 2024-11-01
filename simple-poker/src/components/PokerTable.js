@@ -1,22 +1,35 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { TelegramUser } from '../ui/telegramUser/TelegramUser';
-import './PokerTable.css';
-import { usePokerTable } from './usePokerTable';
-import { useTelegram } from './useTelegram';
+import { AnimatePresence, motion } from 'framer-motion'
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom' // Import useNavigate
+import Card from '../ui/card/Card'
+import { TelegramUser } from '../ui/telegramUser/TelegramUser'
+import './PokerTable.css'
+import { usePokerTable } from './usePokerTable'
+import { useTelegram } from './useTelegram'
 
 const PokerTable = () => {
-	const [bank, setBank] = useState(null);
-	const [upDown, setUpDown] = useState('');
-	
+	const [bank, setBank] = useState(100)
+	const [upDown, setUpDown] = useState('')
+
 	// Initialize navigate inside the component
-	const navigate = useNavigate();
-  
+	const navigate = useNavigate()
+
 	const onCrownClick = () => {
-	  // Navigate to the balance options page
-	  navigate('/balance-options');
-	};
+		// Navigate to the balance options page
+		navigate('/balance-options')
+	}
+
+	// Flip card
+	const [isFlipped, setIsFlipped] = useState(false)
+	const [isAnimating, setIsAnimating] = useState(false)
+
+	const handleFlip = () => {
+		if (!isAnimating) {
+			setIsFlipped(!isFlipped)
+			setIsAnimating(true)
+		}
+	}
+
 	const cardVariants = {
 		initial: {
 			opacity: 0,
@@ -58,9 +71,9 @@ const PokerTable = () => {
 		setWithdrawAmount,
 		withdrawAddress,
 		setWithdrawAddress,
-	  } = useTelegram(setBank); // The bank is set by the useTelegram hook
-	
-	  const {
+	} = useTelegram(setBank) // The bank is set by the useTelegram hook
+
+	const {
 		bet,
 		tableCards,
 		userCards,
@@ -74,48 +87,49 @@ const PokerTable = () => {
 		startNewGame,
 		gameStarted,
 		gameStage,
-	  } = usePokerTable(telegramUser, bank, setBank);
-	
-	  useEffect(() => {
-		if (telegramUser) {
-		  console.log('User logged in:', telegramUser);
-		  // Bank will already be fetched by useTelegram hook, no need to refetch
-		}
-	  }, [telegramUser]);
-	
-	  // Ensure to display loading state when balance is being fetched
-	  if (bank === null) {
-		return <div>Loading your balance...</div>;
-	  }
+		showConfetti,
+	} = usePokerTable(telegramUser, bank, setBank)
 
-	  const handleGameResult = (winnings) => {
+	useEffect(() => {
+		if (telegramUser) {
+			console.log('User logged in:', telegramUser)
+			// Bank will already be fetched by useTelegram hook, no need to refetch
+		}
+	}, [telegramUser])
+
+	// Ensure to display loading state when balance is being fetched
+	if (bank === null) {
+		return <div>Loading your balance...</div>
+	}
+
+	const handleGameResult = winnings => {
 		// Adjust the in-game balance based on winnings or losses
-		const newBalance = bank + winnings; // winnings can be positive or negative depending on win/loss
-		setBank(newBalance);
-	  
+		const newBalance = bank + winnings // winnings can be positive or negative depending on win/loss
+		setBank(newBalance)
+
 		// Send a request to the backend to update the user's balance in the database
 		fetch('https://game-baboon-included.ngrok-free.app/api/updateBalance', {
-		  method: 'POST',
-		  headers: {
-			'Content-Type': 'application/json',
-		  },
-		  body: JSON.stringify({
-			userId: telegramUser.id,
-			balance: newBalance,
-		  }),
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				userId: telegramUser.id,
+				balance: newBalance,
+			}),
 		})
-		  .then((res) => res.json())
-		  .then((data) => {
-			if (data.success) {
-			  console.log('Balance successfully updated in the backend.');
-			} else {
-			  console.error(`Error updating balance: ${data.message}`);
-			}
-		  })
-		  .catch((error) => {
-			console.error('Error updating balance:', error);
-		  });
-	  };
+			.then(res => res.json())
+			.then(data => {
+				if (data.success) {
+					console.log('Balance successfully updated in the backend.')
+				} else {
+					console.error(`Error updating balance: ${data.message}`)
+				}
+			})
+			.catch(error => {
+				console.error('Error updating balance:', error)
+			})
+	}
 
 	const handleWithdraw = e => {
 		e.preventDefault()
@@ -147,12 +161,9 @@ const PokerTable = () => {
 			})
 	}
 
-
-
 	return (
 		<div className='poker-table'>
 			{telegramUser && <TelegramUser telegramUser={telegramUser} />}
-
 			<motion.div
 				className='header'
 				initial='hidden'
@@ -204,20 +215,20 @@ const PokerTable = () => {
 						className='cards-wrap'
 					>
 						<div className='cards-section'>
+							<h4 style={{ position: 'absolute', content: '', top: '-20px' }}>
+								Trinity hand
+							</h4>
 							<AnimatePresence mode='wait'>
 								{gameStage !== 'initial' && (
 									<div className='computer-cards'>
 										{computerCards.map((card, index) => (
-											<motion.img
+											<Card
 												key={index}
-												src={card.image}
-												alt={`Computer card ${index}`}
-												className='card'
-												custom={index}
-												initial='initial'
-												animate='animate'
-												exit='exit'
-												variants={cardVariants}
+												index={index}
+												stage={gameStage}
+												image={card.image}
+												combination={card.combination}
+												flippedStage='reveal'
 											/>
 										))}
 									</div>
@@ -228,67 +239,71 @@ const PokerTable = () => {
 								<AnimatePresence mode='wait'>
 									{result && (
 										<>
-										<motion.div
-											className='flash-text'
-											initial={{ opacity: 0, scale: 0.5 }}
-											animate={{ opacity: 1, scale: 1 }}
-											exit={{ opacity: 0, scale: 0.5 }}
-											transition={{ duration: 0.3 }}
-										>
-											{result}
-										</motion.div>
-										{result === 'win' ? handleGameResult(winnings) : handleGameResult(-bet)}
+											<motion.div
+												className='flash-text'
+												initial={{ opacity: 0, y: 20, scale: 0.55 }}
+												animate={{ opacity: 1, y: 0, scale: 1 }}
+												transition={{ duration: 0.8, delay: 1 }}
+											>
+												<div>{result}</div>
+											</motion.div>
+											{/* {result === 'win'
+												? handleGameResult(winnings)
+												: handleGameResult(-bet)} */}
 										</>
-									)}
-								</AnimatePresence>
-
-								<AnimatePresence mode='wait'>
-									{gameStage !== 'initial' && gameStage !== 'betting' && (
-										<motion.div
-											className='win-text'
-											initial={{ opacity: 0, y: 20 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -20 }}
-											transition={{ duration: 0.3 }}
-										>
-											WIN {winnings}
-										</motion.div>
 									)}
 								</AnimatePresence>
 
 								<AnimatePresence mode='wait'>
 									<div className='table-cards'>
 										{tableCards.map((card, index) => (
-											<motion.img
+											<Card
 												key={index}
-												src={card.image}
-												alt={`Table card ${index}`}
-												className='card'
-												custom={index}
-												initial='initial'
-												animate='animate'
-												exit='exit'
-												variants={cardVariants}
+												index={index}
+												stage={gameStage}
+												image={card.image}
+												combination={card.combination}
+												flippedStage='reveal'
 											/>
 										))}
 									</div>
 								</AnimatePresence>
+								<AnimatePresence mode='wait'>
+									{gameStage !== 'initial' && gameStage !== 'betting' && (
+										<motion.div
+											className={`win-text ${winnings === 0 ? 'lose' : ''}`}
+											initial={{ opacity: 0, y: 20, scale: 0.55 }}
+											animate={{ opacity: 1, y: 0, scale: 1 }}
+											// exit={{ opacity: 0, y: -20, scale: 0.55 }}
+											transition={{ duration: 0.8, delay: 1 }}
+										>
+											{winnings > 0 ? `You win ${winnings}` : 'You lose'}
+										</motion.div>
+									)}
+								</AnimatePresence>
 							</div>
 
-							<div className='user-cards'>
+							<motion.div
+								className={`flip-card-inner ${
+									gameStage === 'betting' ? 'flipped' : ''
+								} user-cards`}
+							>
 								{userCards.map((card, index) => (
-									<motion.img
+									<Card
 										key={index}
-										src={card.image}
-										alt={`User card ${index}`}
-										className='card'
-										custom={index}
-										initial='initial'
-										animate='animate'
-										variants={cardVariants}
+										image={card.image}
+										index={index}
+										stage={gameStage}
+										combination={card.combination}
+										flippedStage='betting'
 									/>
 								))}
-							</div>
+							</motion.div>
+							<h4
+								style={{ position: 'absolute', content: '', bottom: '-55px' }}
+							>
+								Your hand
+							</h4>
 						</div>
 					</motion.div>
 				)}
@@ -303,7 +318,11 @@ const PokerTable = () => {
 			>
 				<div className='bank'>
 					<div className='bank-icon-container'>
-						<img src='/assets/chip.png' alt='Chips' className='bank-icon' />
+						<img
+							src='/assets/PokerChip2.png'
+							alt='Chips'
+							className='bank-icon'
+						/>
 						<motion.div
 							className='bank-value'
 							key={bank}
@@ -330,6 +349,7 @@ const PokerTable = () => {
 								exit='exit'
 								variants={fadeVariants}
 								transition={{ duration: 0.3 }}
+								className='btns-section'
 							>
 								<button className='deal-button' onClick={dealInitialCards}>
 									Раздать
@@ -388,7 +408,7 @@ const PokerTable = () => {
 							variants={fadeVariants}
 							transition={{ duration: 0.3 }}
 						>
-							<div>
+							<div className='btns-section'>
 								<button className='reveal-button' onClick={revealCards}>
 									Вскрыть карты
 								</button>
@@ -442,6 +462,7 @@ const PokerTable = () => {
 							exit='exit'
 							variants={fadeVariants}
 							transition={{ duration: 0.3 }}
+							className='btns-section'
 						>
 							<button className='new-game-button' onClick={startNewGame}>
 								Новая игра
@@ -455,8 +476,32 @@ const PokerTable = () => {
 							variants={fadeVariants}
 							transition={{ duration: 0.3 }}
 						>
-							<div>
-								<div className='dummy'></div>
+							<div className='bet'>
+								<div className='bet-icon-container'>
+									<img
+										src='/assets/PokerChip2.png'
+										alt='Bet'
+										className='bet-icon'
+									/>
+									<motion.div
+										className='bet-value'
+										key={bet}
+										initial={{ scale: 1.2, opacity: 0 }}
+										animate={{ scale: 1, opacity: 1 }}
+										transition={{ duration: 0.3 }}
+									>
+										{bet}
+									</motion.div>
+								</div>
+								<div className='bet-text'>Ставка</div>
+								<div className='bet-controls'>
+									<button className='bet-minus' onClick={decreaseBet}>
+										-
+									</button>
+									<button className='bet-plus' onClick={increaseBet}>
+										+
+									</button>
+								</div>
 							</div>
 						</motion.div>
 					</AnimatePresence>
