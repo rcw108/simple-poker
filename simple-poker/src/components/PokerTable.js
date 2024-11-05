@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom' // Import useNavigate
+import { Link, useNavigate } from 'react-router-dom' // Import useNavigate
+import { useBalance } from '../providers/BalanceProvider'
 import Card from '../ui/card/Card'
 import { TelegramUser } from '../ui/telegramUser/TelegramUser'
 import './PokerTable.css'
@@ -8,8 +9,8 @@ import { usePokerTable } from './usePokerTable'
 import { useTelegram } from './useTelegram'
 
 const PokerTable = () => {
-	const [bank, setBank] = useState(100)
-	const [upDown, setUpDown] = useState('')
+	const { balance, setBalance } = useBalance()
+	const [bank, setBank] = useState(balance)
 
 	// Initialize navigate inside the component
 	const navigate = useNavigate()
@@ -22,6 +23,14 @@ const PokerTable = () => {
 	// Flip card
 	const [isFlipped, setIsFlipped] = useState(false)
 	const [isAnimating, setIsAnimating] = useState(false)
+	const [disabled, setDisabled] = useState(false)
+
+	const handleDisabled = time => {
+		setDisabled(true)
+		setTimeout(() => {
+			setDisabled(false)
+		}, time)
+	}
 
 	const handleFlip = () => {
 		if (!isAnimating) {
@@ -71,7 +80,7 @@ const PokerTable = () => {
 		setWithdrawAmount,
 		withdrawAddress,
 		setWithdrawAddress,
-	} = useTelegram(setBank) // The bank is set by the useTelegram hook
+	} = useTelegram(setBalance) // The bank is set by the useTelegram hook
 
 	const {
 		bet,
@@ -88,7 +97,10 @@ const PokerTable = () => {
 		gameStarted,
 		gameStage,
 		showConfetti,
-	} = usePokerTable(telegramUser, bank, setBank)
+		textResult,
+		allIn,
+		skip,
+	} = usePokerTable(telegramUser, balance, setBalance)
 
 	useEffect(() => {
 		if (telegramUser) {
@@ -97,15 +109,24 @@ const PokerTable = () => {
 		}
 	}, [telegramUser])
 
+	useEffect(() => {
+		if (gameStage === 'betting') {
+			handleDisabled(1800)
+		}
+		if (gameStage === 'reveal') {
+			handleDisabled(1800)
+		}
+	}, [gameStage])
+
 	// Ensure to display loading state when balance is being fetched
-	if (bank === null) {
+	if (balance === null) {
 		return <div>Loading your balance...</div>
 	}
 
 	const handleGameResult = winnings => {
 		// Adjust the in-game balance based on winnings or losses
-		const newBalance = bank + winnings // winnings can be positive or negative depending on win/loss
-		setBank(newBalance)
+		const newBalance = balance + winnings // winnings can be positive or negative depending on win/loss
+		setBalance(newBalance)
 
 		// Send a request to the backend to update the user's balance in the database
 		fetch('https://game-baboon-included.ngrok-free.app/api/updateBalance', {
@@ -148,8 +169,8 @@ const PokerTable = () => {
 				if (data.success) {
 					alert('Withdrawal processed!')
 					// Update balance on frontend
-					const newBalance = bank - parseFloat(withdrawAmount)
-					setBank(newBalance)
+					const newBalance = balance - parseFloat(withdrawAmount)
+					setBalance(newBalance)
 					setWithdrawAmount('')
 					setWithdrawAddress('')
 				} else {
@@ -164,46 +185,33 @@ const PokerTable = () => {
 	return (
 		<div className='poker-table'>
 			{telegramUser && <TelegramUser telegramUser={telegramUser} />}
-			<motion.div
-				className='header'
-				initial='hidden'
-				animate='visible'
-				variants={fadeVariants}
-				transition={{ duration: 0.5 }}
-			>
-				<div className='crown-section' onClick={onCrownClick}>
-					<img
-						src='/assets/icons8-crown-96 1.png'
-						alt='Crown'
-						className='crown-icon'
-					/>
-					<motion.span
-						className='chips'
-						key={bank}
-						initial={{ scale: 1.2, opacity: 0 }}
-						animate={{ scale: 1, opacity: 1 }}
-						transition={{ duration: 0.3 }}
-					>
-						{bank - 100 < 0 ? 0 : bank - 100}
-					</motion.span>
-				</div>
-			</motion.div>
-
 			<AnimatePresence mode='wait'>
 				{!gameStarted ? (
-					<motion.div
-						className='logo-screen-container'
-						key='logo-screen'
-						initial='hidden'
-						animate='visible'
-						exit='exit'
-						variants={fadeVariants}
-						transition={{ duration: 0.5 }}
-					>
-						<div className='logo-screen'>
-							<motion.img src='/assets/first-logo.png' alt='logo' />
-						</div>
-					</motion.div>
+					skip ? (
+						<motion.div
+							className='logo-screen-container'
+							key='logo-screen'
+							initial='hidden'
+							animate='visible'
+							exit='exit'
+							variants={fadeVariants}
+							transition={{ duration: 0.5 }}
+						></motion.div>
+					) : (
+						<motion.div
+							className='logo-screen-container'
+							key='logo-screen'
+							initial='hidden'
+							animate='visible'
+							exit='exit'
+							variants={fadeVariants}
+							transition={{ duration: 0.5 }}
+						>
+							<div className='logo-screen'>
+								<motion.img src='/assets/first-logo.png' alt='logo' />
+							</div>
+						</motion.div>
+					)
 				) : (
 					<motion.div
 						key='game-screen'
@@ -277,7 +285,7 @@ const PokerTable = () => {
 											// exit={{ opacity: 0, y: -20, scale: 0.55 }}
 											transition={{ duration: 0.8, delay: 1 }}
 										>
-											{winnings > 0 ? `You win ${winnings}` : 'You lose'}
+											{`${textResult} ${winnings}`}
 										</motion.div>
 									)}
 								</AnimatePresence>
@@ -317,6 +325,24 @@ const PokerTable = () => {
 				transition={{ duration: 0.5, delay: 0.2 }}
 			>
 				<div className='bank'>
+					<Link to={'/my-profile'}>
+						<div className='crown-section' onClick={onCrownClick}>
+							<img
+								src='/assets/icons8-crown-96 1.png'
+								alt='Crown'
+								className='crown-icon'
+							/>
+							<motion.span
+								className='chips'
+								key={balance}
+								initial={{ scale: 1.2, opacity: 0 }}
+								animate={{ scale: 1, opacity: 1 }}
+								transition={{ duration: 0.3 }}
+							>
+								{balance - 100 < 0 ? 0 : balance - 100}
+							</motion.span>
+						</div>
+					</Link>
 					<div className='bank-icon-container'>
 						<img
 							src='/assets/PokerChip2.png'
@@ -325,12 +351,12 @@ const PokerTable = () => {
 						/>
 						<motion.div
 							className='bank-value'
-							key={bank}
+							key={balance * 2}
 							initial={{ scale: 1.2, opacity: 0 }}
 							animate={{ scale: 1, opacity: 1 }}
 							transition={{ duration: 0.3 }}
 						>
-							{bank}
+							{balance}
 						</motion.div>
 					</div>
 					<div className='bank-text'>Баланс</div>
@@ -367,6 +393,9 @@ const PokerTable = () => {
 								transition={{ duration: 0.3 }}
 							>
 								<div className='bet'>
+									<div className='all-in'>
+										<button onClick={allIn}>All-in</button>
+									</div>
 									<div className='bet-icon-container'>
 										<img
 											src='/assets/PokerChip2.png'
@@ -409,7 +438,11 @@ const PokerTable = () => {
 							transition={{ duration: 0.3 }}
 						>
 							<div className='btns-section'>
-								<button className='reveal-button' onClick={revealCards}>
+								<button
+									className='reveal-button'
+									onClick={revealCards}
+									disabled={disabled}
+								>
 									Вскрыть карты
 								</button>
 							</div>
@@ -423,6 +456,9 @@ const PokerTable = () => {
 							transition={{ duration: 0.3 }}
 						>
 							<div className='bet'>
+								<div className='all-in'>
+									<button onClick={allIn}>All-in</button>
+								</div>
 								<div className='bet-icon-container'>
 									<img
 										src='/assets/PokerChip2.png'
@@ -464,7 +500,11 @@ const PokerTable = () => {
 							transition={{ duration: 0.3 }}
 							className='btns-section'
 						>
-							<button className='new-game-button' onClick={startNewGame}>
+							<button
+								className='new-game-button'
+								disabled={disabled}
+								onClick={startNewGame}
+							>
 								Новая игра
 							</button>
 						</motion.div>
@@ -477,6 +517,9 @@ const PokerTable = () => {
 							transition={{ duration: 0.3 }}
 						>
 							<div className='bet'>
+								<div className='all-in'>
+									<button onClick={allIn}>All-in</button>
+								</div>
 								<div className='bet-icon-container'>
 									<img
 										src='/assets/PokerChip2.png'
