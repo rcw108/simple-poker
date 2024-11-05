@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBalance } from '../providers/BalanceProvider'
 import {
 	getFlush,
@@ -27,6 +28,8 @@ export const usePokerTable = (telegramUser, bank) => {
 
 	let allCards = []
 
+	const navigate = useNavigate()
+
 	const [newAllCards, setNewAllCards] = useState([])
 
 	const emptyCard = {
@@ -35,6 +38,15 @@ export const usePokerTable = (telegramUser, bank) => {
 		image: '/assets/cards/empty.png',
 		combination: false,
 	}
+
+	useEffect(() => {
+		if (balance <= 0) {
+			setBalance(0)
+			setTimeout(() => {
+				navigate('/my-profile')
+			}, 3000)
+		}
+	}, [balance])
 
 	// Build the allCards array
 	suits.forEach(suit => {
