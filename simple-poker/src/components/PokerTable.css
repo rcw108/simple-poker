@@ -185,11 +185,23 @@ body {
 	width: 27px;
 	cursor: pointer;
 	margin-bottom: 5px;
+	text-decoration: none;
+	border: none;
+	outline: none;
+	box-shadow: none;
+}
+
+a:any-link {
+	text-decoration: none;
 }
 
 .chips {
 	font-size: 18px;
 	color: #fff;
+	box-shadow: none;
+	text-decoration: none;
+	border: none;
+	outline: none;
 }
 
 /* Cards Section */
@@ -344,8 +356,11 @@ body {
 	font-size: 22px;
 	min-width: 30px;
 	min-height: 30px;
-	width: 30px;
-	height: 30px;
+	max-width: 30px;
+	max-height: 30px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 	cursor: pointer;
 	transition: all 0.3s ease-in-out;
 	border-radius: 50%;
@@ -369,11 +384,11 @@ body {
 	height: 30px;
 	border-radius: 50%;
 	background-color: rgba(255, 255, 255, 0.7);
-	border: 2px solid #000;
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	color: #000;
+	line-height: 1;
 	margin: 0 auto;
 	margin-top: 5px;
 }
@@ -659,9 +674,9 @@ button {
 @media (max-width: 600px) {
 	.controls {
 		flex-direction: row; /* Change to row to align items in a row */
-		margin-bottom: 0px;
+		margin-bottom: 5px;
 		min-height: 185px;
-		max-height: 185px;
+		max-height: 195px;
 		margin-top: -70px;
 		padding: 0 10px;
 	}
@@ -736,6 +751,6 @@ button {
 		height: 100%;
 	}
 	.poker-table {
-		height: 90vh;
+		height: 88vh;
 	}
 }
