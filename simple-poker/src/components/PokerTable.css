@@ -659,7 +659,7 @@ button {
 @media (max-width: 600px) {
 	.controls {
 		flex-direction: row; /* Change to row to align items in a row */
-		margin-bottom: 80px;
+		margin-bottom: 0px;
 		min-height: 185px;
 		max-height: 185px;
 		margin-top: -70px;
@@ -736,6 +736,6 @@ button {
 		height: 100%;
 	}
 	.poker-table {
-		height: 100vh;
+		height: 90vh;
 	}
 }
