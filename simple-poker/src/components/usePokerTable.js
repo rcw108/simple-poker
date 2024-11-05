@@ -38,6 +38,7 @@ export const usePokerTable = (telegramUser, bank) => {
 		image: '/assets/cards/empty.png',
 		combination: false,
 	}
+
 	useEffect(() => {
 		if (balance <= 0) {
 			setBalance(0)
