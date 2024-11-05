@@ -285,7 +285,9 @@ const PokerTable = () => {
 											// exit={{ opacity: 0, y: -20, scale: 0.55 }}
 											transition={{ duration: 0.8, delay: 1 }}
 										>
-											{`${textResult} ${winnings}`}
+											{`${textResult} ${
+												textResult === 'You lose' ? '' : winnings
+											}`}
 										</motion.div>
 									)}
 								</AnimatePresence>
@@ -359,7 +361,7 @@ const PokerTable = () => {
 							{balance}
 						</motion.div>
 					</div>
-					<div className='bank-text'>Баланс</div>
+					<div className='bank-text'>Chips</div>
 					<div className='add-balance'>
 						<span>+</span>
 					</div>
@@ -378,7 +380,7 @@ const PokerTable = () => {
 								className='btns-section'
 							>
 								<button className='deal-button' onClick={dealInitialCards}>
-									Раздать
+									Start Game
 								</button>
 							</motion.div>
 						</AnimatePresence>
@@ -412,7 +414,7 @@ const PokerTable = () => {
 											{bet}
 										</motion.div>
 									</div>
-									<div className='bet-text'>Ставка</div>
+									<div className='bet-text'>Wager</div>
 									<div className='bet-controls'>
 										<button className='bet-minus' onClick={decreaseBet}>
 											-
@@ -443,7 +445,7 @@ const PokerTable = () => {
 									onClick={revealCards}
 									disabled={disabled}
 								>
-									Вскрыть карты
+									Showdown
 								</button>
 							</div>
 						</motion.div>
@@ -475,7 +477,7 @@ const PokerTable = () => {
 										{bet}
 									</motion.div>
 								</div>
-								<div className='bet-text'>Ставка</div>
+								<div className='bet-text'>Wager</div>
 								<div className='bet-controls'>
 									<button className='bet-minus' onClick={decreaseBet}>
 										-
@@ -505,7 +507,7 @@ const PokerTable = () => {
 								disabled={disabled}
 								onClick={startNewGame}
 							>
-								Новая игра
+								New Round
 							</button>
 						</motion.div>
 						<motion.div
@@ -536,7 +538,7 @@ const PokerTable = () => {
 										{bet}
 									</motion.div>
 								</div>
-								<div className='bet-text'>Ставка</div>
+								<div className='bet-text'>Wager</div>
 								<div className='bet-controls'>
 									<button className='bet-minus' onClick={decreaseBet}>
 										-

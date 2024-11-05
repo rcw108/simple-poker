@@ -1,4 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+* {
+	box-sizing: border-box;
+}
 
 html,
 body {
@@ -276,7 +279,7 @@ body {
 	transform: translate(-50%, -50%) !important;
 	font-weight: bold;
 	color: #000;
-	font-size: 10px;
+	font-size: 14px;
 }
 
 .bank-text,
@@ -346,6 +349,7 @@ body {
 	cursor: pointer;
 	transition: all 0.3s ease-in-out;
 	border-radius: 50%;
+	line-height: 1;
 }
 
 .bet-minus {
@@ -451,7 +455,6 @@ body {
 
 .all-in {
 	height: 47px;
-	padding: 15px 5px;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -480,11 +483,9 @@ body {
 /* profile */
 
 .head-profile {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
+	margin-top: 20px;
 	height: 40px;
-	padding: 16px 15px 15px 29px;
+	padding-left: 20px;
 }
 
 .center {
@@ -514,7 +515,6 @@ body {
 
 .balance-profile img {
 	position: absolute;
-	content: '';
 	object-fit: cover;
 }
 
@@ -547,6 +547,15 @@ body {
 	top: 20px;
 	right: 20px;
 	cursor: pointer;
+	width: 25px;
+	height: 25px;
+}
+
+.popup img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
 }
 
 .openedPopup {
@@ -561,8 +570,8 @@ body {
 }
 
 .closePopup {
-	width: 35px;
-	height: 35px;
+	width: 20px;
+	height: 20px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -570,6 +579,13 @@ body {
 	top: 20px;
 	right: 20px;
 	cursor: pointer;
+}
+
+.closePopup img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
 }
 
 .contentPopup {
@@ -632,7 +648,11 @@ body {
 .itemPopup img {
 	margin: 0 auto;
 	max-width: 385px;
-	height: 84px;
+	height: 75px;
+}
+
+button {
+	color: #000 !important;
 }
 
 /* Adjust layout for mobile screens */
@@ -642,7 +662,8 @@ body {
 		margin-bottom: 20px;
 		min-height: 185px;
 		max-height: 185px;
-		margin-top: -80px;
+		margin-top: -70px;
+		padding: 0 10px;
 	}
 
 	.table-cards {
@@ -663,12 +684,17 @@ body {
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
+		align-items: center;
 		height: 100%;
 	}
 
 	.deal-button {
 		margin: 0;
 		padding: 10px 20px;
+	}
+
+	.card-container {
+		width: 60px;
 	}
 
 	.cards-section {
@@ -699,6 +725,11 @@ body {
 	.user-cards,
 	.computer-cards {
 		justify-content: center;
+	}
+
+	.all-in {
+		height: 30px;
+		width: 100%;
 	}
 
 	.all-in button {
