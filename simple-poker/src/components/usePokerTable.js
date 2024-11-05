@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useBalance } from '../providers/BalanceProvider'
 import {
 	getFlush,
 	getFourOfAKind,
@@ -10,7 +11,8 @@ import {
 } from './combinations'
 import { rankMap, ranks, suits } from './poker.data'
 
-export const usePokerTable = (telegramUser, bank, setBank) => {
+export const usePokerTable = (telegramUser, bank) => {
+	const { balance, setBalance } = useBalance()
 	const [showConfetti, setShowConfetti] = useState(false)
 	const [gameStarted, setGameStarted] = useState(false)
 	const [bet, setBet] = useState(5)
@@ -18,7 +20,9 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 	const [userCards, setUserCards] = useState([])
 	const [computerCards, setComputerCards] = useState([])
 	const [result, setResult] = useState('')
+	const [textResult, setTextResult] = useState('')
 	const [winnings, setWinnings] = useState(0)
+	const [skip, setSkip] = useState(false)
 	const [gameStage, setGameStage] = useState('initial') // 'initial', 'betting', 'reveal'
 
 	let allCards = []
@@ -56,14 +60,16 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		})
 	})
 
-	console.log('start game', allCards)
-
 	const increaseBet = () => {
-		if (bet < bank) setBet(bet + 5)
+		if (bet < balance) setBet(bet + 5)
 	}
 
 	const decreaseBet = () => {
 		if (bet > 5) setBet(bet - 5)
+	}
+
+	const allIn = () => {
+		setBet(balance)
 	}
 
 	const shuffleArray = array => {
@@ -98,7 +104,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 
 		// Add playerHandCards to the evaluation to use in tiebreaks
 		const handEvaluation = {
-			playerHandCards, // Сохраняем карты в руке для сравнения при ничьей
+			playerHandCards,
 			sortedCards,
 		}
 
@@ -111,11 +117,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		const twoPairCards = getTwoPair(cards)
 		const pairCards = getPair(cards)
 
-		const highestHandCard = playerHandCards.length
-			? playerHandCards.reduce((highest, current) =>
-					current.rank > highest.rank ? current : highest
-			  )
-			: null
+		const highestHandCard = sortedCards[0] || null // Изменено для обработки случаев, когда нет карт
 
 		// Check for Straight Flush and Royal Flush
 		const isRoyalFlush =
@@ -129,14 +131,14 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 			straightCards.length === 5 &&
 			flushCards.every(card => straightCards.includes(card))
 
-		// Determine hand rank and corresponding cards
+		// Определение ранга руки и соответствующих карт
 		switch (true) {
 			case isRoyalFlush:
 				return {
 					...handEvaluation,
 					hand: 'Royal Flush',
 					winnings: bet * 100,
-					combination: flushCards,
+					combination: flushCards.length > 0 ? flushCards : [highestHandCard], // Обеспечиваем, что возвращаем карты
 					highestHandCard,
 				}
 			case isStraightFlush:
@@ -144,7 +146,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Straight Flush',
 					winnings: bet * 20,
-					combination: flushCards,
+					combination: flushCards.length > 0 ? flushCards : [highestHandCard],
 					highestHandCard,
 				}
 			case fourOfKindCards.length === 4:
@@ -152,7 +154,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Four of a Kind',
 					winnings: bet * 10,
-					combination: fourOfKindCards,
+					combination:
+						fourOfKindCards.length > 0 ? fourOfKindCards : [highestHandCard],
 					highestHandCard,
 				}
 			case fullHouseCards.length === 5:
@@ -160,7 +163,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Full House',
 					winnings: bet * 7,
-					combination: fullHouseCards,
+					combination:
+						fullHouseCards.length > 0 ? fullHouseCards : [highestHandCard],
 					highestHandCard,
 				}
 			case flushCards.length === 5:
@@ -168,7 +172,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Flush',
 					winnings: bet * 5,
-					combination: flushCards,
+					combination: flushCards.length > 0 ? flushCards : [highestHandCard],
 					highestHandCard,
 				}
 			case straightCards.length === 5:
@@ -176,7 +180,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Straight',
 					winnings: bet * 2,
-					combination: straightCards,
+					combination:
+						straightCards.length > 0 ? straightCards : [highestHandCard],
 					highestHandCard,
 				}
 			case threeOfKindCards.length === 3:
@@ -184,7 +189,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Three of a Kind',
 					winnings: bet * 1.5,
-					combination: threeOfKindCards,
+					combination:
+						threeOfKindCards.length > 0 ? threeOfKindCards : [highestHandCard],
 					highestHandCard,
 				}
 			case twoPairCards.length === 4:
@@ -192,7 +198,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'Two Pair',
 					winnings: bet * 1,
-					combination: twoPairCards,
+					combination:
+						twoPairCards.length > 0 ? twoPairCards : [highestHandCard],
 					highestHandCard,
 				}
 			case pairCards.length === 2:
@@ -200,7 +207,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'One Pair',
 					winnings: bet * 0.5,
-					combination: pairCards,
+					combination: pairCards.length > 0 ? pairCards : [highestHandCard],
 					highestHandCard,
 				}
 			default:
@@ -208,8 +215,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 					...handEvaluation,
 					hand: 'High Card',
 					winnings: 0,
-					combination: [sortedCards[0]],
-					highestHandCard: sortedCards[0],
+					combination: highestHandCard ? [highestHandCard] : [],
+					highestHandCard,
 				}
 		}
 	}
@@ -217,7 +224,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 	const dealInitialCards = () => {
 		setGameStarted(true)
 		setGameStage('betting')
-		if (bank < bet) {
+		if (balance < bet) {
 			setResult('Insufficient balance. Cannot deal.')
 			return
 		}
@@ -225,7 +232,6 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		const shuffledDeck = shuffleArray([...allCards])
 		const newUserCards = shuffledDeck.slice(0, 2)
 		setNewAllCards([...shuffledDeck.slice(2)])
-		console.log('newAllCards', newAllCards)
 		setUserCards(newUserCards)
 		setComputerCards([emptyCard, emptyCard])
 		setTableCards([emptyCard, emptyCard, emptyCard, emptyCard, emptyCard])
@@ -234,44 +240,92 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 	}
 
 	const compareHighCards = (hand1, hand2) => {
-		// Ensure valid inputs
-		const playerHandCards1 = hand1?.playerHandCards || []
-		const playerHandCards2 = hand2?.playerHandCards || []
+		console.log('hand1', hand1)
+		console.log('hand2', hand2)
+		// Обе руки игроков, отсортированные по старшинству
+		const sortedHand1 = [...hand1.playerHandCards].sort(
+			(a, b) => b.rank - a.rank
+		)
+		const sortedHand2 = [...hand2.playerHandCards].sort(
+			(a, b) => b.rank - a.rank
+		)
 
-		// If no cards to compare, declare a tie
-		if (!playerHandCards1.length || !playerHandCards2.length) {
-			return { winner: 'tie', card: null }
-		}
-
-		// Sort both hands by rank in descending order
-		const sortedHand1 = [...playerHandCards1].sort((a, b) => b.rank - a.rank)
-		const sortedHand2 = [...playerHandCards2].sort((a, b) => b.rank - a.rank)
-
-		// Compare highest cards, then second highest, and so on
 		for (let i = 0; i < Math.min(sortedHand1.length, sortedHand2.length); i++) {
 			if (sortedHand1[i].rank > sortedHand2[i].rank) {
-				return {
-					winner: 'user',
-					card: sortedHand1[i],
-				}
+				return { winner: 'user', card: sortedHand1[i] }
 			} else if (sortedHand2[i].rank > sortedHand1[i].rank) {
-				return {
-					winner: 'trinity',
-					card: sortedHand2[i],
-				}
+				return { winner: 'trinity', card: sortedHand2[i] }
 			}
 		}
 
-		// If all cards are equal, it's a tie
-		return {
-			winner: 'tie',
-			card: sortedHand1[0],
+		// Если все карты равны, возвращаем ничью
+		return { winner: 'tie', card: null }
+	}
+
+	const compareCombinationCards = (hand1, hand2) => {
+		const handRank = {
+			'Royal Flush': 10,
+			'Straight Flush': 9,
+			'Four of a Kind': 8,
+			'Full House': 7,
+			Flush: 6,
+			Straight: 5,
+			'Three of a Kind': 4,
+			'Two Pair': 3,
+			'One Pair': 2,
+			'High Card': 1,
+			'': 0, // Добавляем пустую комбинацию с наименьшим приоритетом
 		}
+
+		const getSortedCombination = hand => {
+			switch (hand.hand) {
+				case 'Four of a Kind':
+					// Сортируем так, чтобы сначала шли карты комбинации, потом кикеры
+					return [
+						...hand.combination.filter(card => card.rank === hand.mainRank),
+						...hand.combination.filter(card => card.rank !== hand.mainRank),
+					]
+				case 'Full House':
+					// Тройка должна быть впереди пары
+					return [
+						...hand.combination.filter(card => card.rank === hand.mainRank),
+						...hand.combination.filter(card => card.rank !== hand.mainRank),
+					]
+				case 'Two Pair':
+					// Две пары идут впереди, потом кикер
+					const pairs = hand.combination.filter(
+						card =>
+							card.rank === hand.mainRank || card.rank === hand.secondaryRank
+					)
+					const kicker = hand.combination.find(
+						card =>
+							card.rank !== hand.mainRank && card.rank !== hand.secondaryRank
+					)
+					return [...pairs.sort((a, b) => b.rank - a.rank), kicker]
+				default:
+					// Для остальных комбинаций (например, Flush, Straight и др.) сортируем карты по старшинству
+					return [...hand.combination].sort((a, b) => b.rank - a.rank)
+			}
+		}
+
+		// Проверка на отсутствие комбинации у одного из игроков
+		if (handRank[hand1.hand] > handRank[hand2.hand]) return 'user'
+		if (handRank[hand1.hand] < handRank[hand2.hand]) return 'trinity'
+
+		// Продолжаем с существующей логикой сравнения карт, если комбинации равны
+		const sortedHand1 = getSortedCombination(hand1)
+		const sortedHand2 = getSortedCombination(hand2)
+
+		for (let i = 0; i < Math.min(sortedHand1.length, sortedHand2.length); i++) {
+			if (sortedHand1[i].rank > sortedHand2[i].rank) return 'user'
+			if (sortedHand1[i].rank < sortedHand2[i].rank) return 'trinity'
+		}
+
+		return 'tie'
 	}
 
 	const revealCards = () => {
 		setGameStage('reveal')
-		console.log('all cards', newAllCards)
 		const newUserCards = [...userCards]
 		const newComputerCards = newAllCards.slice(2, 4)
 		const newTableCards = newAllCards.slice(4, 9)
@@ -288,7 +342,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		let bestUserHand = { winnings: 0, combination: [], hand: '' }
 		userCombinations.forEach(hand => {
 			const evaluation = evaluateHand(hand, newUserCards)
-			if (evaluation.winnings > bestUserHand.winnings) {
+			// console.log('user', evaluation)
+			if (evaluation.winnings >= bestUserHand.winnings) {
 				bestUserHand = evaluation
 			}
 		})
@@ -296,47 +351,28 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		let bestComputerHand = { winnings: 0, combination: [], hand: '' }
 		computerCombinations.forEach(hand => {
 			const evaluation = evaluateHand(hand, newComputerCards)
-			if (evaluation.winnings > bestComputerHand.winnings) {
+			// console.log('computer', evaluation)
+			if (evaluation.winnings >= bestComputerHand.winnings) {
 				bestComputerHand = evaluation
 			}
 		})
 
 		let winningCombination = []
 		let newWinnings = 0
+		let bestHandCardForTie = ''
 
-		if (bestUserHand.winnings === bestComputerHand.winnings) {
-			const comparison = compareHighCards(bestUserHand, bestComputerHand)
+		console.log('bestUserHand', bestUserHand)
+		console.log('bestComputerHand', bestComputerHand)
 
-			switch (comparison.winner) {
-				case 'user':
-					setResult(
-						`You win with ${bestUserHand.hand} (High Card: ${comparison.card.rank})`
-					)
-					newWinnings = bestUserHand.winnings
-					winningCombination = bestUserHand.combination
-					break
-				case 'trinity':
-					setResult(
-						`Trinity wins with ${bestComputerHand.hand} (High Card: ${comparison.card.rank})`
-					)
-					newWinnings = 0
-					winningCombination = bestComputerHand.combination
-					break
-				case 'tie':
-					setResult(`It's a tie with ${bestUserHand.hand}!`)
-					newWinnings = bet
-					winningCombination = bestUserHand.combination
-					break
-				default:
-					break
-			}
-		}
-
-		if (bestUserHand.winnings > bestComputerHand.winnings) {
+		if (compareCombinationCards(bestUserHand, bestComputerHand) === 'user') {
+			setTextResult('You win')
 			setResult(`You win with ${bestUserHand.hand}!`)
 			newWinnings = bestUserHand.winnings
 			winningCombination = bestUserHand.combination
-		} else if (bestUserHand.winnings < bestComputerHand.winnings) {
+		} else if (
+			compareCombinationCards(bestUserHand, bestComputerHand) === 'trinity'
+		) {
+			setTextResult('You lose')
 			setResult(`Trinity wins with ${bestComputerHand.hand}!`)
 			newWinnings = 0
 			winningCombination = bestComputerHand.combination
@@ -344,56 +380,91 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 			// Tie - compare cards in hand
 			const comparison = compareHighCards(bestUserHand, bestComputerHand)
 
+			console.log('comparison', comparison)
+
 			switch (comparison.winner) {
 				case 'user':
+					console.log('user')
 					setResult(`You win with ${bestUserHand.hand}`)
+					setTextResult('You win')
 					newWinnings = bestUserHand.winnings
 					// Important: Use the full winning combination, not just the high card
 					winningCombination = bestUserHand.combination
+					bestHandCardForTie = comparison?.card?.image || ''
 					break
 				case 'trinity':
+					console.log('trinity')
 					setResult(`Trinity wins with ${bestComputerHand.hand}`)
+					setTextResult('You lose')
 					newWinnings = 0
 					// Important: Use the full winning combination, not just the high card
 					winningCombination = bestComputerHand.combination
+					bestHandCardForTie = comparison?.card?.image || ''
 					break
 				case 'tie':
+					console.log('tie')
 					setResult(`It's a tie with ${bestUserHand.hand}!`)
 					newWinnings = bet
 					winningCombination = bestUserHand.combination
+					bestHandCardForTie = comparison?.card?.image || ''
 					break
 				default:
 					break
 			}
 		}
 
-		const updateCombinationFlag = (cards, winningCombination) => {
+		const updateCombinationFlag = (
+			cards,
+			winningCombination,
+			bestHandCardForTie = ''
+		) => {
 			return cards.map(card => ({
 				...card,
-				combination: winningCombination.some(
-					winCard => winCard.rank === card.rank && winCard.suit === card.suit
-				),
+				combination:
+					winningCombination.some(
+						winCard => winCard.rank === card.rank && winCard.suit === card.suit
+					) || card.image === bestHandCardForTie,
 			}))
 		}
 
-		setUserCards(updateCombinationFlag(newUserCards, winningCombination))
-		setComputerCards(
-			updateCombinationFlag(newComputerCards, winningCombination)
+		setUserCards(
+			updateCombinationFlag(
+				newUserCards,
+				winningCombination,
+				bestHandCardForTie
+			)
 		)
-		setTableCards(updateCombinationFlag(newTableCards, winningCombination))
+		setComputerCards(
+			updateCombinationFlag(
+				newComputerCards,
+				winningCombination,
+				bestHandCardForTie
+			)
+		)
+		setTableCards(
+			updateCombinationFlag(
+				newTableCards,
+				winningCombination,
+				bestHandCardForTie
+			)
+		)
 
 		setWinnings(newWinnings)
-		setBank(prevBank => prevBank - bet + newWinnings)
+		setTimeout(() => {
+			setBalance(prevBank => prevBank - bet + newWinnings)
+		}, 2000)
 	}
 
 	const startNewGame = () => {
 		setShowConfetti(true)
 		setGameStage('betting')
 		setGameStarted(false)
+		setSkip(true)
 		setUserCards([])
 		setComputerCards([])
 		setTableCards([])
 		setResult('')
+		setTextResult('')
 		setWinnings(0)
 		setBet(5)
 		setTimeout(() => {
@@ -402,7 +473,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 			by setting the `showConfetti` state to `false`. */
 			// setShowConfetti(false)
 			dealInitialCards()
-		}, 500)
+		}, 750)
 	}
 
 	// const startNewGame = () => {
@@ -417,8 +488,7 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 	// }
 
 	return {
-		bank,
-		setBank,
+		setBalance,
 		bet,
 		setBet,
 		tableCards,
@@ -435,5 +505,8 @@ export const usePokerTable = (telegramUser, bank, setBank) => {
 		gameStage,
 		showConfetti,
 		setShowConfetti,
+		textResult,
+		allIn,
+		skip,
 	}
 }
