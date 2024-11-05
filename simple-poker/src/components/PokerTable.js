@@ -384,48 +384,6 @@ const PokerTable = () => {
 								</button>
 							</motion.div>
 						</AnimatePresence>
-
-						<AnimatePresence mode='wait'>
-							<motion.div
-								key='initial-controls'
-								initial='hidden'
-								animate='visible'
-								exit='exit'
-								variants={fadeVariants}
-								transition={{ duration: 0.3 }}
-							>
-								<div className='bet'>
-									<div className='all-in'>
-										<button onClick={allIn}>All-in</button>
-									</div>
-									<div className='bet-icon-container'>
-										<img
-											src='/assets/PokerChip2.png'
-											alt='Bet'
-											className='bet-icon'
-										/>
-										<motion.div
-											className='bet-value'
-											key={bet}
-											initial={{ scale: 1.2, opacity: 0 }}
-											animate={{ scale: 1, opacity: 1 }}
-											transition={{ duration: 0.3 }}
-										>
-											{bet}
-										</motion.div>
-									</div>
-									<div className='bet-text'>Wager</div>
-									<div className='bet-controls'>
-										<button className='bet-minus' onClick={decreaseBet}>
-											-
-										</button>
-										<button className='bet-plus' onClick={increaseBet}>
-											+
-										</button>
-									</div>
-								</div>
-							</motion.div>
-						</AnimatePresence>
 					</>
 				)}
 
@@ -447,45 +405,6 @@ const PokerTable = () => {
 								>
 									Showdown
 								</button>
-							</div>
-						</motion.div>
-						<motion.div
-							key='betting-controls-2'
-							initial='hidden'
-							animate='visible'
-							exit='exit'
-							variants={fadeVariants}
-							transition={{ duration: 0.3 }}
-						>
-							<div className='bet'>
-								<div className='all-in'>
-									<button onClick={allIn}>All-in</button>
-								</div>
-								<div className='bet-icon-container'>
-									<img
-										src='/assets/PokerChip2.png'
-										alt='Bet'
-										className='bet-icon'
-									/>
-									<motion.div
-										className='bet-value'
-										key={bet}
-										initial={{ scale: 1.2, opacity: 0 }}
-										animate={{ scale: 1, opacity: 1 }}
-										transition={{ duration: 0.3 }}
-									>
-										{bet}
-									</motion.div>
-								</div>
-								<div className='bet-text'>Wager</div>
-								<div className='bet-controls'>
-									<button className='bet-minus' onClick={decreaseBet}>
-										-
-									</button>
-									<button className='bet-plus' onClick={increaseBet}>
-										+
-									</button>
-								</div>
 							</div>
 						</motion.div>
 					</>
@@ -510,47 +429,49 @@ const PokerTable = () => {
 								New Round
 							</button>
 						</motion.div>
-						<motion.div
-							key='reveal-controls-2'
-							initial='hidden'
-							animate='visible'
-							exit='exit'
-							variants={fadeVariants}
-							transition={{ duration: 0.3 }}
-						>
-							<div className='bet'>
-								<div className='all-in'>
-									<button onClick={allIn}>All-in</button>
-								</div>
-								<div className='bet-icon-container'>
-									<img
-										src='/assets/PokerChip2.png'
-										alt='Bet'
-										className='bet-icon'
-									/>
-									<motion.div
-										className='bet-value'
-										key={bet}
-										initial={{ scale: 1.2, opacity: 0 }}
-										animate={{ scale: 1, opacity: 1 }}
-										transition={{ duration: 0.3 }}
-									>
-										{bet}
-									</motion.div>
-								</div>
-								<div className='bet-text'>Wager</div>
-								<div className='bet-controls'>
-									<button className='bet-minus' onClick={decreaseBet}>
-										-
-									</button>
-									<button className='bet-plus' onClick={increaseBet}>
-										+
-									</button>
-								</div>
-							</div>
-						</motion.div>
 					</AnimatePresence>
 				)}
+				<AnimatePresence mode='wait'>
+					<motion.div
+						key='initial-controls'
+						initial='hidden'
+						animate='visible'
+						exit='exit'
+						variants={fadeVariants}
+						transition={{ duration: 0.3 }}
+					>
+						<div className='bet'>
+							<div className='all-in'>
+								<button onClick={allIn}>All-in</button>
+							</div>
+							<div className='bet-icon-container'>
+								<img
+									src='/assets/PokerChip2.png'
+									alt='Bet'
+									className='bet-icon'
+								/>
+								<motion.div
+									className='bet-value'
+									key={bet}
+									initial={{ scale: 1.2, opacity: 0 }}
+									animate={{ scale: 1, opacity: 1 }}
+									transition={{ duration: 0.3 }}
+								>
+									{bet}
+								</motion.div>
+							</div>
+							<div className='bet-text'>Wager</div>
+							<div className='bet-controls'>
+								<button className='bet-minus' onClick={decreaseBet}>
+									-
+								</button>
+								<button className='bet-plus' onClick={increaseBet}>
+									+
+								</button>
+							</div>
+						</div>
+					</motion.div>
+				</AnimatePresence>
 			</motion.div>
 
 			{/* <motion.div
