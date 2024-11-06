@@ -581,7 +581,7 @@ a:any-link {
 	right: 20px;
 	cursor: pointer;
 	width: 25px;
-	height: 25px;
+	height: 25px !important;
 	z-index: 9999;
 }
 
