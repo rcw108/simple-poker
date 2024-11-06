@@ -152,6 +152,11 @@ const PokerTable = () => {
 			})
 	}
 
+	const handlePlayAudio = e => {
+		const audio = new Audio('/assets/sound/pokerchip08.mp3')
+		audio.play()
+	}
+
 	const handleWithdraw = e => {
 		e.preventDefault()
 
@@ -442,7 +447,14 @@ const PokerTable = () => {
 					>
 						<div className='bet'>
 							<div className='all-in'>
-								<button onClick={allIn}>All-in</button>
+								<button
+									onClick={e => {
+										allIn()
+										handlePlayAudio(e)
+									}}
+								>
+									All-in
+								</button>
 							</div>
 							<div className='bet-icon-container'>
 								<img
@@ -462,10 +474,22 @@ const PokerTable = () => {
 							</div>
 							<div className='bet-text'>Wager</div>
 							<div className='bet-controls'>
-								<button className='bet-minus' onClick={decreaseBet}>
+								<button
+									className='bet-minus'
+									onClick={e => {
+										decreaseBet()
+										handlePlayAudio(e)
+									}}
+								>
 									<img src='/assets/minus.svg' alt='plus' />
 								</button>
-								<button className='bet-plus' onClick={increaseBet}>
+								<button
+									className='bet-plus'
+									onClick={e => {
+										increaseBet()
+										handlePlayAudio(e)
+									}}
+								>
 									<img src='/assets/plus.svg' alt='plus' />
 								</button>
 							</div>
