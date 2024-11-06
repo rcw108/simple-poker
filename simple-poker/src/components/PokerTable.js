@@ -363,7 +363,7 @@ const PokerTable = () => {
 					</div>
 					<div className='bank-text'>Chips</div>
 					<div className='add-balance'>
-						<span>+</span>
+						<img src='/assets/plus.svg' alt='plus' />
 					</div>
 				</div>
 
@@ -463,10 +463,10 @@ const PokerTable = () => {
 							<div className='bet-text'>Wager</div>
 							<div className='bet-controls'>
 								<button className='bet-minus' onClick={decreaseBet}>
-									-
+									<img src='/assets/minus.svg' alt='plus' />
 								</button>
 								<button className='bet-plus' onClick={increaseBet}>
-									+
+									<img src='/assets/plus.svg' alt='plus' />
 								</button>
 							</div>
 						</div>
