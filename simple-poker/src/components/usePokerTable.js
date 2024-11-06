@@ -236,6 +236,7 @@ export const usePokerTable = (telegramUser, bank) => {
 	const dealInitialCards = () => {
 		setGameStarted(true)
 		setGameStage('betting')
+		console.log(balance, bet)
 		if (balance < bet) {
 			setResult('Insufficient balance. Cannot deal.')
 			return

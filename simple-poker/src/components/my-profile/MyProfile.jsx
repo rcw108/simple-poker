@@ -16,7 +16,7 @@ const MyProfile = () => {
 			<div className='center'>
 				<div className='balance-profile' style={{ color: '#fff' }}>
 					<img src='/assets/pc1.png' alt='balance' />
-					<span>{balance - 100}</span>
+					<span>{balance - 100 < 0 ? 0 : balance - 100}</span>
 				</div>
 				<h2>Your Bank</h2>
 			</div>
