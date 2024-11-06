@@ -5,6 +5,8 @@ import { portalData } from './portalPopup.data'
 const PortalPopup = () => {
 	const [isOpen, setIsOpen] = useState(false)
 
+	const rootElement = document.getElementById('root')
+
 	return ReactDOM.createPortal(
 		<>
 			<div className='popup' onClick={() => setIsOpen(true)}>
@@ -39,7 +41,7 @@ const PortalPopup = () => {
 				</div>
 			)}
 		</>,
-		document.body
+		rootElement
 	)
 }
 
