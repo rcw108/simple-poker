@@ -373,8 +373,8 @@ a:any-link {
 	font-size: 22px;
 	min-width: 30px;
 	min-height: 30px;
-	/* max-width: 30px;
-	max-height: 30px; */
+	max-width: 30px;
+	max-height: 30px;
 	display: flex;
 	justify-content: center;
 	align-items: center;
