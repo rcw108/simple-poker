@@ -165,7 +165,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'Four of a Kind',
-					winnings: bet * 10,
+					winnings: bet * 15,
 					combination:
 						fourOfKindCards.length > 0 ? fourOfKindCards : [highestHandCard],
 					highestHandCard,
@@ -174,7 +174,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'Full House',
-					winnings: bet * 7,
+					winnings: bet * 10,
 					combination:
 						fullHouseCards.length > 0 ? fullHouseCards : [highestHandCard],
 					highestHandCard,
@@ -183,7 +183,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'Flush',
-					winnings: bet * 5,
+					winnings: bet * 7,
 					combination: flushCards.length > 0 ? flushCards : [highestHandCard],
 					highestHandCard,
 				}
@@ -191,7 +191,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'Straight',
-					winnings: bet * 2,
+					winnings: bet * 4,
 					combination:
 						straightCards.length > 0 ? straightCards : [highestHandCard],
 					highestHandCard,
@@ -200,7 +200,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'Three of a Kind',
-					winnings: bet * 1.5,
+					winnings: bet * 3,
 					combination:
 						threeOfKindCards.length > 0 ? threeOfKindCards : [highestHandCard],
 					highestHandCard,
@@ -209,7 +209,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'Two Pair',
-					winnings: bet * 1,
+					winnings: bet * 2,
 					combination:
 						twoPairCards.length > 0 ? twoPairCards : [highestHandCard],
 					highestHandCard,
@@ -218,7 +218,7 @@ export const usePokerTable = (telegramUser, bank) => {
 				return {
 					...handEvaluation,
 					hand: 'One Pair',
-					winnings: bet * 0.5,
+					winnings: bet * 1,
 					combination: pairCards.length > 0 ? pairCards : [highestHandCard],
 					highestHandCard,
 				}
