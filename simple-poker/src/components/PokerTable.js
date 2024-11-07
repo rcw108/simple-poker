@@ -321,10 +321,14 @@ const PokerTable = () => {
 											animate={{ opacity: 1, y: 0, scale: 1 }}
 											// exit={{ opacity: 0, y: -20, scale: 0.55 }}
 											transition={{ duration: 0.8, delay: 1 }}
+											ref={bankRef}
 										>
 											{`${textResult} ${
 												textResult === 'You lose' ? '' : winnings
 											}`}
+											{chipBank && bankRef.current && (
+												<SvgConfetti wrapperRef={bankRef.current} />
+											)}
 										</motion.div>
 									)}
 								</AnimatePresence>
@@ -385,14 +389,10 @@ const PokerTable = () => {
 					<div className='bank-icon-container'>
 						<div>
 							<img
-								ref={bankRef}
 								src='/assets/PokerChip2.png'
 								alt='Chips'
 								className='bank-icon'
 							/>
-							{chipBank && bankRef.current && (
-								<SvgConfetti wrapperRef={bankRef.current} />
-							)}
 						</div>
 						<motion.div
 							className='bank-value'
