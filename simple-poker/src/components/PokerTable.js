@@ -327,7 +327,14 @@ const PokerTable = () => {
 												textResult === 'You lose' ? '' : winnings
 											}`}
 											{chipBank && bankRef.current && (
-												<SvgConfetti wrapperRef={bankRef.current} />
+												<SvgConfetti
+													wrapperRef={bankRef.current}
+													icon={
+														textResult === 'You lose'
+															? '/assets/lose.svg'
+															: '/assets/PokerChip2.png'
+													}
+												/>
 											)}
 										</motion.div>
 									)}

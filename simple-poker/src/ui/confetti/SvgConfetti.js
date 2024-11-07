@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion'
 import React from 'react'
 
-const svgIcons = Array(100).fill(['/assets/PokerChip2.png']).flat()
-
-function SvgConfetti({ wrapperRef }) {
+function SvgConfetti({ wrapperRef, icon }) {
+	const svgIcons = Array(100).fill([icon]).flat()
 	console.log(wrapperRef)
 
 	return (
