@@ -5,7 +5,11 @@ export const getCookieHelper = name => {
 	if (cookieValue) {
 		return cookieValue
 	} else {
-		return false
+		if (name === 'sound') {
+			return true
+		} else {
+			return false
+		}
 	}
 }
 
