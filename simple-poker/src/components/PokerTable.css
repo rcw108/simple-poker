@@ -556,6 +556,25 @@ a:any-link {
 	padding-left: 7px;
 }
 
+.sound {
+	width: 40px;
+	height: 40px;
+	position: fixed;
+	content: '';
+	top: 13px;
+	right: 60px;
+	z-index: 888;
+	content: '';
+	cursor: pointer;
+}
+
+.sound img {
+	width: 100%;
+	object-fit: cover;
+	object-position: center;
+	height: 100%;
+}
+
 .bottom-profile {
 	display: flex;
 	justify-content: space-around;

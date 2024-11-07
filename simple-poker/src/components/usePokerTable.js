@@ -25,6 +25,7 @@ export const usePokerTable = (telegramUser, bank) => {
 	const [winnings, setWinnings] = useState(0)
 	const [skip, setSkip] = useState(false)
 	const [gameStage, setGameStage] = useState('initial') // 'initial', 'betting', 'reveal'
+	const [chipBank, setChipBank] = useState(false)
 
 	let allCards = []
 
@@ -406,7 +407,6 @@ export const usePokerTable = (telegramUser, bank) => {
 					bestHandCardForTie = comparison?.card?.image || ''
 					break
 				case 'trinity':
-					console.log('trinity')
 					setResult(`Trinity wins with ${bestComputerHand.hand}`)
 					setTextResult('You lose')
 					newWinnings = 0
@@ -415,8 +415,8 @@ export const usePokerTable = (telegramUser, bank) => {
 					bestHandCardForTie = comparison?.card?.image || ''
 					break
 				case 'tie':
-					console.log('tie')
 					setResult(`It's a tie with ${bestUserHand.hand}!`)
+					setTextResult('Tie')
 					newWinnings = bet
 					winningCombination = bestUserHand.combination
 					bestHandCardForTie = comparison?.card?.image || ''
@@ -464,11 +464,15 @@ export const usePokerTable = (telegramUser, bank) => {
 
 		setWinnings(newWinnings)
 		setTimeout(() => {
+			setChipBank(true)
+		}, 1600)
+		setTimeout(() => {
 			setBalance(prevBank => prevBank - bet + newWinnings)
 		}, 2000)
 	}
 
 	const startNewGame = () => {
+		setChipBank(false)
 		setShowConfetti(true)
 		setGameStage('betting')
 		setGameStarted(false)
@@ -521,5 +525,6 @@ export const usePokerTable = (telegramUser, bank) => {
 		textResult,
 		allIn,
 		skip,
+		chipBank,
 	}
 }

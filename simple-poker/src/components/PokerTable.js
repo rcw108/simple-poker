@@ -1,15 +1,16 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom' // Import useNavigate
 import { useBalance } from '../providers/BalanceProvider'
 import Card from '../ui/card/Card'
+import SvgConfetti from '../ui/confetti/SvgConfetti'
 import { TelegramUser } from '../ui/telegramUser/TelegramUser'
 import './PokerTable.css'
 import { usePokerTable } from './usePokerTable'
 import { useTelegram } from './useTelegram'
 
 const PokerTable = () => {
-	const { balance, setBalance } = useBalance()
+	const { balance, setBalance, setSound, sound } = useBalance()
 	const [bank, setBank] = useState(balance)
 
 	// Initialize navigate inside the component
@@ -100,6 +101,7 @@ const PokerTable = () => {
 		textResult,
 		allIn,
 		skip,
+		chipBank,
 	} = usePokerTable(telegramUser, balance, setBalance)
 
 	useEffect(() => {
@@ -109,6 +111,15 @@ const PokerTable = () => {
 		}
 	}, [telegramUser])
 
+	const bankRef = useRef(null)
+
+	const handlePlayBalanceSound = () => {
+		if (sound) {
+			const audio = new Audio('/assets/sound/money.mp3')
+			audio.play()
+		}
+	}
+
 	useEffect(() => {
 		if (gameStage === 'betting') {
 			handleDisabled(1800)
@@ -117,6 +128,18 @@ const PokerTable = () => {
 			handleDisabled(1800)
 		}
 	}, [gameStage])
+
+	useEffect(() => {
+		if (bankRef.current) {
+			console.log('bankRef is set:', bankRef.current)
+		}
+	}, [bankRef.current])
+
+	useEffect(() => {
+		if (chipBank) {
+			handlePlayBalanceSound()
+		}
+	}, [chipBank])
 
 	// Ensure to display loading state when balance is being fetched
 	if (balance === null) {
@@ -153,8 +176,10 @@ const PokerTable = () => {
 	}
 
 	const handlePlayAudio = e => {
-		const audio = new Audio('/assets/sound/pokerchip08.mp3')
-		audio.play()
+		if (sound) {
+			const audio = new Audio('/assets/sound/pokerchip08.mp3')
+			audio.play()
+		}
 	}
 
 	const handleWithdraw = e => {
@@ -190,6 +215,13 @@ const PokerTable = () => {
 	return (
 		<div className='poker-table'>
 			{telegramUser && <TelegramUser telegramUser={telegramUser} />}
+			<div className='sound' onClick={() => setSound(!sound)}>
+				{sound ? (
+					<img src='/assets/sound/sound-on.svg' alt='sound' />
+				) : (
+					<img src='/assets/sound/sound-off.svg' alt='sound' />
+				)}
+			</div>
 			<AnimatePresence mode='wait'>
 				{!gameStarted ? (
 					skip ? (
@@ -351,11 +383,17 @@ const PokerTable = () => {
 						</div>
 					</Link>
 					<div className='bank-icon-container'>
-						<img
-							src='/assets/PokerChip2.png'
-							alt='Chips'
-							className='bank-icon'
-						/>
+						<div>
+							<img
+								ref={bankRef}
+								src='/assets/PokerChip2.png'
+								alt='Chips'
+								className='bank-icon'
+							/>
+							{chipBank && bankRef.current && (
+								<SvgConfetti wrapperRef={bankRef.current} />
+							)}
+						</div>
 						<motion.div
 							className='bank-value'
 							key={balance * 2}

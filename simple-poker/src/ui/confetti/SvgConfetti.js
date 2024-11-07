@@ -1,54 +1,60 @@
 import { motion } from 'framer-motion'
 import React from 'react'
 
-const svgIcons = ['❤️', '👍', '😍', '🎉', '🔥', '💥', '✨']
+const svgIcons = Array(50).fill(['/assets/PokerChip2.png']).flat()
 
-function SvgConfetti() {
+function SvgConfetti({ wrapperRef }) {
+	console.log(wrapperRef)
+
 	return (
 		<div
 			style={{
-				position: 'fixed',
-				inset: 0,
+				position: 'absolute',
+				// inset: 0,
 				pointerEvents: 'none',
-				zIndex: 50,
-				overflow: 'hidden',
+				zIndex: 999,
+				left: '40%',
+				top: '40%',
+				transform: 'translate(-50%, -50%)',
+				overflow: 'visible',
 			}}
 		>
 			{svgIcons.map((icon, index) => {
-				const horizontalSpread = Math.random() * 300 - 150
-				const fallDistance = Math.random() * 500 + 250
-				const delay = Math.random() * 0.5
+				const horizontalSpread = Math.random() * 350 - 150
+				const upwardInitial = -(Math.random() * 10 + 100) // Higher initial rise
+				const downwardFall = Math.random() * 500 + 300 // Deeper descent
+				const rotateValue = Math.random() * 720 - 360
+				const delay = Math.random() * 0.8
 
 				return (
-					<motion.div
+					<motion.img
+						src={icon}
+						alt='confetti'
 						key={`${icon}-${index}`}
 						initial={{
-							opacity: 0,
-							scale: 0.3,
-							x: 0,
-							y: -100,
+							opacity: 1,
+							scale: 0.4,
+							x: wrapperRef.offsetLeft + wrapperRef.offsetWidth / 2,
+							y: wrapperRef.offsetTop + wrapperRef.offsetHeight / 2,
 						}}
 						animate={{
-							x: horizontalSpread,
-							y: fallDistance,
-							rotate: [0, Math.random() * 540],
+							x: [0, horizontalSpread * 0.3, horizontalSpread], // More horizontal spread
+							y: [0, upwardInitial, downwardFall * Math.sin(2 * Math.PI * 0.2)], // Parabolic arc
+							rotate: [0, rotateValue],
 							opacity: [1, 0.8, 0.5, 0.2, 0],
-							scale: [1, 1.2, 1, 0.7, 0.4],
+							scale: [0.4, 1.4, 1, 0.6], // Larger scale at peak
 						}}
 						transition={{
-							duration: 2.5,
+							duration: 2.5, // Longer duration for the arc
 							delay: delay,
-							ease: 'easeInOut',
+							ease: [0.42, 0, 0.58, 1], // Easing function for the arc
 						}}
 						style={{
 							position: 'absolute',
-							left: '50%',
-							top: '50%',
-							fontSize: '4rem',
+							width: '15px',
+							height: '15px',
 						}}
-					>
-						{icon}
-					</motion.div>
+					/>
 				)
 			})}
 		</div>

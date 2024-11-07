@@ -16,6 +16,8 @@ function App() {
 						<Route path='/' element={<AppContent />} />
 						<Route path='/balance-options' element={<BalanceOptions />} />{' '}
 						<Route path='/my-profile' element={<MyProfile />} />
+						{/* Test confetti page */}
+						{/* <Route path='/conf' element={<Confetti />} /> */}
 					</Routes>
 				</Router>
 				<PortalPopup />
