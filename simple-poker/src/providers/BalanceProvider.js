@@ -9,10 +9,9 @@ export const BalanceProvider = ({ children }) => {
 	const [sound, setSound] = useState(true)
 
 	useEffect(() => {
-		getCookieHelper(soundCookieName) === 'true'
-			? setSound(true)
-			: setSound(false)
+		setSound(getCookieHelper(soundCookieName))
 	}, [])
+	console.log(sound)
 
 	useEffect(() => {
 		setCookieHelper(soundCookieName, sound)
