@@ -1,12 +1,24 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import '../../components/PokerTable.css'
+import { useBalance } from '../../providers/BalanceProvider'
 
 const Card = ({ image, index, stage, flippedStage, combination }) => {
 	const [isFlipped, setIsFlipped] = useState(false)
 	const [hasDealt, setHasDealt] = useState(false)
 	const [shouldStayFlipped, setShouldStayFlipped] = useState(false)
 	const [reveal, setReveal] = useState(false)
+
+	const { sound } = useBalance()
+
+	const playFlipSound = () => {
+		if (sound) {
+			const audio = new Audio('/assets/sound/deal.mp3')
+			setTimeout(() => {
+				audio.play()
+			}, index * 200)
+		}
+	}
 
 	const cardVariants = {
 		initial: {
@@ -64,6 +76,7 @@ const Card = ({ image, index, stage, flippedStage, combination }) => {
 	useEffect(() => {
 		if (stage === 'betting' && !hasDealt) {
 			setHasDealt(true)
+			playFlipSound()
 		}
 
 		// Проверка на переворот карты
