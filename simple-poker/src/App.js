@@ -6,6 +6,8 @@ import MyProfile from './components/my-profile/MyProfile'
 import PortalPopup from './components/portalPopup/PortalPopup'
 import { BalanceProvider } from './providers/BalanceProvider'
 import { TelegramProvider } from './TelegramProvider'
+import TestPage from './socket/testPage';
+
 
 function App() {
 	return (
@@ -16,6 +18,7 @@ function App() {
 						<Route path='/' element={<AppContent />} />
 						<Route path='/balance-options' element={<BalanceOptions />} />{' '}
 						<Route path='/my-profile' element={<MyProfile />} />
+						<Route path='/test' element={<TestPage />} />
 						{/* Test confetti page */}
 						{/* <Route path='/conf' element={<Confetti />} /> */}
 					</Routes>
