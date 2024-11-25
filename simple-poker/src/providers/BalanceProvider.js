@@ -5,7 +5,7 @@ const BalanceContext = createContext()
 const soundCookieName = 'sound'
 
 export const BalanceProvider = ({ children }) => {
-	const [balance, setBalance] = useState(100)
+	const [balance, setBalance] = useState(null)
 	const [sound, setSound] = useState(true)
 
 	useEffect(() => {
