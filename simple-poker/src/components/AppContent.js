@@ -59,15 +59,15 @@ function AppContent() {
 		}
 	}, [])
 
-	if (false) {
+	if (loading) {
 		return <div>Loading...</div>
 	}
 
-	if (false) {
+	if (!isTelegramWebAppDetected) {
 		return <div>Make sure this web app is opened in Telegram client.</div>
 	}
 
-	if (false) {
+	if (!isUserVerified) {
 		return <div>Error verifying user. Please try again later.</div>
 	}
 
