@@ -3,6 +3,9 @@
 require('dotenv').config({ path: '../.env' });
 
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const uuid = require('uuid');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
@@ -10,7 +13,248 @@ const TonWeb = require('tonweb');
 const { MongoClient } = require('mongodb'); // MongoDB Client
 
 const app = express();
+const server = http.createServer(app);
 const port = process.env.PORT || 80;
+
+
+const {
+  getFourOfAKind,
+  getFullHouse,
+  getFlush,
+  getStraight,
+  getThreeOfAKind,
+  getTwoPair,
+  getPair,
+} = require('./combination.js');
+
+
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+
+const gameRooms = {};
+
+// Utility functions
+const shuffleDeck = () => {
+  const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const ranks = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K', 'A'];
+  const deck = [];
+
+  suits.forEach((suit) => {
+      ranks.forEach((rank) => {
+          deck.push({ suit, rank });
+      });
+  });
+
+  for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  return deck;
+};
+
+
+const initializeRoom = (roomId) => {
+  if (!gameRooms[roomId]) {
+      gameRooms[roomId] = {
+          players: [],
+          deck: shuffleDeck(),
+          tableCards: [],
+          stage: 'initial',
+      };
+  }
+};
+
+
+const evaluateHand = (cards) => {
+  if (getFourOfAKind(cards).length) return { hand: 'Four of a Kind', rank: 8 };
+  if (getFullHouse(cards).length) return { hand: 'Full House', rank: 7 };
+  if (getFlush(cards).length) return { hand: 'Flush', rank: 6 };
+  if (getStraight(cards).length) return { hand: 'Straight', rank: 5 };
+  if (getThreeOfAKind(cards).length) return { hand: 'Three of a Kind', rank: 4 };
+  if (getTwoPair(cards).length) return { hand: 'Two Pair', rank: 3 };
+  if (getPair(cards).length) return { hand: 'One Pair', rank: 2 };
+  return { hand: 'High Card', rank: 1 };
+};
+
+// Socket.io handlers
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  // Handle joining a room
+  socket.on('joinRoom', ({ roomId, userId }) => {
+    // Check if room exists, if not, initialize it
+    if (!gameRooms[roomId]) {
+        gameRooms[roomId] = {
+            players: [],
+            deck: shuffleDeck(), // Initialize a new shuffled deck
+            tableCards: [],
+            stage: 'initial',
+        };
+        console.log(`Room ${roomId} created`);
+    }
+
+    const room = gameRooms[roomId];
+
+    // Ensure the room does not exceed two players
+    if (room.players.length >= 2) {
+        socket.emit('error', 'Room is full.');
+        return;
+    }
+
+    // Check if the user is already in the room
+    if (!room.players.find((player) => player.id === userId)) {
+        room.players.push({
+            id: userId,
+            cards: [],
+            balance: 100, // Example starting balance
+        });
+        console.log(`User ${userId} added to room ${roomId}`);
+    }
+
+    socket.join(roomId);
+    io.to(roomId).emit('roomUpdate', room); // Notify all clients in the room about the update
+});
+
+  // Handle placing bets
+  socket.on('placeBet', ({ roomId, userId, betAmount }) => {
+      const room = gameRooms[roomId];
+      if (!room) {
+          socket.emit('error', 'Room does not exist');
+          return;
+      }
+
+      const player = room.players.find((p) => p.id === userId);
+      if (!player || player.balance < betAmount) {
+          socket.emit('error', 'Insufficient balance');
+          return;
+      }
+
+      player.balance -= betAmount;
+      room.bank += betAmount;
+
+      io.to(roomId).emit('betUpdate', { player, bank: room.bank });
+      console.log(`Player ${player.username} placed a bet of ${betAmount}`);
+  });
+
+  // Handle dealing cards
+  socket.on('dealCards', ({ roomId }) => {
+    const room = gameRooms[roomId];
+
+    // Validate the room and player count
+    if (!room) {
+        socket.emit('error', 'Room does not exist');
+        return;
+    }
+
+    if (room.players.length !== 2) {
+        socket.emit('error', 'The game requires exactly two players to start.');
+        return;
+    }
+
+    if (room.stage !== 'initial') {
+        socket.emit('error', 'Cannot deal cards. The game is not in the initial stage.');
+        return;
+    }
+
+    // Ensure the deck exists and is shuffled
+    if (!room.deck || room.deck.length === 0) {
+        room.deck = shuffleDeck(); // Implement a function to shuffle and initialize the deck
+    }
+
+    // Deal cards one by one to each player
+    for (let i = 0; i < 2; i++) {
+        room.players.forEach((player) => {
+            player.cards.push(room.deck.shift());
+        });
+    }
+
+    // Deal the table cards
+    room.tableCards = room.deck.splice(0, 5);
+
+    // Update the game stage
+    room.stage = 'betting';
+
+    // Broadcast the updated room state to all clients in the room
+    io.to(roomId).emit('gameUpdate', room);
+
+    console.log(`Cards dealt one by one to players in room ${roomId}`);
+});
+
+  // Handle revealing cards
+  socket.on('revealCards', ({ roomId }) => {
+      const room = gameRooms[roomId];
+      if (!room || room.stage !== 'betting') {
+          socket.emit('error', 'Cannot reveal cards');
+          return;
+      }
+
+      const results = room.players.map((player) => {
+          const hand = evaluateHand([...player.cards, ...room.tableCards]);
+          return { playerId: player.id, username: player.username, hand };
+      });
+
+      const winner = results.reduce((best, current) => {
+          return current.hand.rank > best.hand.rank ? current : best;
+      });
+
+      room.stage = 'reveal';
+      io.to(roomId).emit('gameResult', { winner, results });
+      console.log(`Game result revealed in room ${roomId}`);
+  });
+
+  // Start a new round
+  socket.on('startNewRound', ({ roomId }) => {
+      const room = gameRooms[roomId];
+      if (!room) {
+          socket.emit('error', 'Room does not exist');
+          return;
+      }
+
+      room.deck = shuffleDeck();
+      room.tableCards = [];
+      room.bank = 0;
+      room.players.forEach((player) => {
+          player.cards = [];
+      });
+      room.stage = 'initial';
+
+      io.to(roomId).emit('gameUpdate', room);
+      console.log(`New round started in room ${roomId}`);
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+      console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+  app.post('/api/saveGameResult', async (req, res) => {
+    const { roomId, winnerId, bank } = req.body;
+  
+    if (!roomId || !winnerId || !bank) {
+      return res.status(400).json({ success: false, message: 'Missing required fields.' });
+    }
+  
+    try {
+      const gamesCollection = db.collection('games');
+      await gamesCollection.insertOne({
+        roomId,
+        winnerId,
+        bank,
+        timestamp: new Date(),
+      });
+  
+      return res.json({ success: true, message: 'Game result saved.' });
+    } catch (error) {
+      console.error('Error saving game result:', error.message);
+      res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+  });
 
 // Middleware
 app.use(cors({
@@ -41,43 +285,30 @@ async function connectMongoDB() {
 // Call this function to initialize MongoDB connection
 connectMongoDB();
 
-
+// Endpoint to get deposit address and comment (Admin wallet)
 const tonweb = new TonWeb(new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC', { apiKey: process.env.TONCENTER_API_KEY }));
 
 const walletManager = (() => {
-  try {
-    const seed = TonWeb.utils.hexToBytes(process.env.TON_SEED);
-    const keyPair = TonWeb.utils.keyPairFromSeed(seed);
-    const WalletClass = tonweb.wallet.all.v3R2;
-    const wallet = new WalletClass(tonweb.provider, {
-      publicKey: keyPair.publicKey,
-    });
+  const seed = TonWeb.utils.hexToBytes(process.env.TON_SEED);
+  const keyPair = TonWeb.utils.keyPairFromSeed(seed);
+  const WalletClass = tonweb.wallet.all.v3R2;
+  const wallet = new WalletClass(tonweb.provider, { publicKey: keyPair.publicKey });
 
-    let walletAddress;
-    (async () => {
-      try {
-        walletAddress = await wallet.getAddress();
-        console.log('Wallet Address:', walletAddress.toString(true, true, true));
+  let walletAddress;
+  (async () => {
+    try {
+      walletAddress = await wallet.getAddress();
+      console.log('Wallet Address:', walletAddress.toString(true, true, true));
+    } catch (error) {
+      console.error('Error retrieving wallet address:', error);
+    }
+  })();
 
-        // Check seqno without deployment logic
-        let seqno = await wallet.methods.seqno().call();
-        if (seqno !== null) {
-          console.log('Wallet is already deployed.');
-        }
-      } catch (error) {
-        console.error('Error interacting with wallet:', error);
-      }
-    })();
-
-    const getWalletAddress = () => walletAddress;
-    const getKeyPair = () => keyPair;
-    const getWallet = () => wallet;
-
-    return { getWalletAddress, getKeyPair, getWallet };
-  } catch (error) {
-    console.error('Error initializing wallet:', error);
-    process.exit(1);
-  }
+  return {
+    getWalletAddress: () => walletAddress,
+    getKeyPair: () => keyPair,
+    getWallet: () => wallet,
+  };
 })();
 
 // Conversion rates
@@ -156,7 +387,8 @@ app.post('/api/verifyUser', async (req, res) => {
       id: userId,
       firstName,
       username,
-      balance: 100,
+      balance: 0,
+      bonusBalance: 100,
       processedTransactions: []
     };
 
@@ -199,15 +431,15 @@ app.get('/api/getBalance', async (req, res) => {
 app.post('/api/updateBalance', async (req, res) => {
   const { userId, balance } = req.body;
 
-  if (!userId) {
-    console.error('User ID is missing in the request.');
-    return res.status(400).json({ success: false, message: 'User ID is required.' });
+  if (!userId || balance === undefined) {
+    console.error('User ID or balance is missing in the request.');
+    return res.status(400).json({ success: false, message: 'User ID and balance are required.' });
   }
 
   try {
     const usersCollection = db.collection('users');
     const result = await usersCollection.updateOne(
-      { _id: userId },
+      { id: userId },
       { $set: { balance } }
     );
 
@@ -224,8 +456,8 @@ app.post('/api/updateBalance', async (req, res) => {
   }
 });
 
-// Endpoint to get deposit address and comment (Admin wallet)
-app.get('/api/getDepositAddress', (req, res) => {
+// Route to generate deposit address for a user
+app.get('/api/getDepositAddress', async (req, res) => {
   const userId = req.query.userId;
 
   if (!userId) {
@@ -233,146 +465,94 @@ app.get('/api/getDepositAddress', (req, res) => {
     return res.status(400).json({ success: false, message: 'User ID is required.' });
   }
 
-  const user = users[userId];
+  try {
+    const usersCollection = db.collection('users'); // Fetch the users collection from MongoDB
+    const user = await usersCollection.findOne({ id: parseInt(userId) });
 
-  if (!user) {
-    console.error(`User not found: ${userId}`);
-    return res.status(404).json({ success: false, message: 'User not found.' });
+    if (!user) {
+      console.error(`User not found: ${userId}`);
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    const addressString = walletManager.getWalletAddress()?.toString(true, true, true);
+
+    if (!addressString) {
+      console.error('Failed to retrieve wallet address.');
+      return res.status(500).json({ success: false, message: 'Failed to retrieve wallet address.' });
+    }
+
+    res.json({
+      success: true,
+      address: addressString,
+      comment: userId, // User ID will be used as the comment for tracking deposits
+    });
+  } catch (error) {
+    console.error('Error retrieving deposit address:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
-
-  const addressString = walletManager.getWalletAddress()?.toString(true, true, true);
-
-  if (!addressString) {
-    console.error('Failed to retrieve wallet address.');
-    return res.status(500).json({ success: false, message: 'Failed to retrieve wallet address.' });
-  }
-
-  res.json({
-    success: true,
-    address: addressString,
-    comment: userId, // User ID will be used as the comment for tracking deposits
-  });
 });
 
-// Endpoint to handle withdrawal requests (From Admin wallet to User wallet)
+// Route to handle withdrawal requests
 app.post('/api/withdraw', async (req, res) => {
-  let { userId, amount, toAddress } = req.body;
-
-  if (!userId) {
-    console.error('User ID is missing in the request.');
-    return res.status(400).json({ success: false, message: 'User ID is required.' });
-  }
-
-  const user = users[userId];
-
-  if (!user) {
-    console.error(`User not found: ${userId}`);
-    return res.status(404).json({ success: false, message: 'User not found.' });
-  }
-
-  // Convert in-game value to USDT TON
-  const usdtAmount = amount / USD_TO_GAME_VALUE;
-
-  if (user.balance < amount) {
-    console.error(`Insufficient balance for user ${userId}. Requested: ${amount}, Available: ${user.balance}`);
-    return res.status(400).json({ success: false, message: 'Insufficient balance.' });
+  const { userId, amount, toAddress } = req.body;
+  if (!userId || !amount || !toAddress) {
+    return res.status(400).json({ success: false, message: 'Missing required fields.' });
   }
 
   try {
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne({ id: parseInt(userId) });
+
+    if (!user || user.balance < amount) {
+      return res.status(400).json({ success: false, message: 'Insufficient balance or user not found.' });
+    }
+
     const wallet = walletManager.getWallet();
     const keyPair = walletManager.getKeyPair();
-    let seqno = await getValidSeqno(wallet);
+    const seqno = await wallet.methods.seqno().call();
 
-    console.log(`Attempting withdrawal of ${usdtAmount} USDT TON to address ${toAddress} with seqno ${seqno}`);
-
+    // Send TON to user wallet
     const transfer = wallet.methods.transfer({
       secretKey: keyPair.secretKey,
       toAddress: toAddress,
-      amount: TonWeb.utils.toNano(usdtAmount.toString()),
-      seqno: seqno,
+      amount: TonWeb.utils.toNano(amount.toString()), // Convert amount to NanoTON
+      seqno,
       payload: null,
       sendMode: 3,
     });
 
     await transfer.send();
 
-    user.balance -= amount;
-
-    console.log(`Processed withdrawal of ${usdtAmount} USDT TON to ${toAddress} for user ${userId}`);
-
-    res.json({ success: true, message: 'Withdrawal processed.' });
+    // Deduct from user balance
+    await usersCollection.updateOne({ id: parseInt(userId) }, { $inc: { balance: -amount } });
+    return res.json({ success: true, message: 'Withdrawal processed successfully.' });
   } catch (error) {
     console.error('Error processing withdrawal:', error);
-    if (error.response) {
-      console.error('Error response data:', error.response.data);
-    }
-    res.status(500).json({ success: false, message: 'Withdrawal failed.', error: error.message });
+    res.status(500).json({ success: false, message: 'Error processing withdrawal.' });
   }
 });
 
-// Function to get a valid seqno with retry logic
-async function getValidSeqno(wallet) {
-  let retries = 5;  // Set the number of retries
-  let seqno = null;
-
-  while (retries > 0) {
-    seqno = await wallet.methods.seqno().call();
-    if (seqno !== null && seqno >= 0) {
-      return seqno;
-    }
-    retries--;
-    console.log(`Retrying to get seqno... Attempts left: ${retries}`);
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
-  }
-  throw new Error('Invalid seqno retrieved. Please try again later.');
-}
-
-// Function to check for new deposits (Admin wallet)
+// Monitor deposits (can be called periodically via cron or similar)
 async function checkForDeposits() {
+  const walletAddress = walletManager.getWalletAddress()?.toString(true, true, true);
+  if (!walletAddress) return console.error('No wallet address available.');
+
   try {
-    const addressString = walletManager.getWalletAddress()?.toString(true, true, true);
-    if (!addressString) {
-      console.error('Failed to retrieve wallet address for deposit check.');
-      return;
-    }
-
-    console.log(`Checking for deposits to address: ${addressString}`);
-
-    // Get the last 10 transactions
-    const response = await tonweb.provider.getTransactions(addressString, 10);
-
-    for (const tx of response) {
+    const transactions = await tonweb.provider.getTransactions(walletAddress, 10);
+    for (const tx of transactions) {
       if (tx.in_msg && tx.in_msg.value > 0) {
-        const valueNano = tx.in_msg.value;
-        const valueTon = TonWeb.utils.fromNano(valueNano);  // Convert to TON
-        let comment = null;
+        const valueTon = TonWeb.utils.fromNano(tx.in_msg.value);
+        const userId = tx.in_msg.comment; // Assuming the comment is the userId
 
-        // Extract comment (user ID) from the transaction
-        if (tx.in_msg.msg_data && tx.in_msg.msg_data['@type'] === 'msg.dataText') {
-          comment = tx.in_msg.msg_data.text;
-        }
-
-        if (comment) {
-          const userId = comment;
-
-          // Check if the user exists
-          const usersCollection = db.collection('users');
-          const user = await usersCollection.findOne({ _id: userId });
-
-          if (user && !user.processedTransactions.includes(tx.transaction_id.hash)) {
-            const gameValue = valueTon * USD_TO_GAME_VALUE;  // Convert TON to in-game value
-
-            // Update user's balance
-            await usersCollection.updateOne(
-              { _id: userId },
-              { 
-                $inc: { balance: gameValue },
-                $push: { processedTransactions: tx.transaction_id.hash }
-              }
-            );
-
-            console.log(`User ${userId} deposited ${valueTon} TON (${gameValue} in-game value)`);
-          }
+        const usersCollection = db.collection('users');
+        const user = await usersCollection.findOne({ id: parseInt(userId) });
+        if (user && !user.processedTransactions.includes(tx.transaction_id.hash)) {
+          const inGameValue = valueTon * USD_TO_GAME_VALUE; // Convert TON to in-game value
+          await usersCollection.updateOne(
+            { id: parseInt(userId) },
+            { $inc: { balance: inGameValue }, $push: { processedTransactions: tx.transaction_id.hash } }
+          );
+          console.log(`Deposit of ${valueTon} TON for user ${userId}.`);
         }
       }
     }
@@ -380,49 +560,8 @@ async function checkForDeposits() {
     console.error('Error checking for deposits:', error);
   }
 }
-// Set an interval to check for deposits every minute
-setInterval(checkForDeposits, 60000);
 
 // Start the server
-app.listen(port, () => {
-  console.log(`Backend server is running on port ${port}`);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
-
-
-// async function mockTransaction() {
-//   const userId = 'test_user';  // Hardcoded for now
-//   const mockTxId = `tx_${Math.random().toString(36).substr(2, 9)}`;  // Simulate a transaction ID
-//   const valueTon = 1;  // Simulate receiving 1 TON
-
-//   try {
-//     // Fetch user from MongoDB
-//     const usersCollection = db.collection('users');
-//     const user = await usersCollection.findOne({ _id: userId });
-
-//     if (!user) {
-//       console.error(`User not found: ${userId}`);
-//       return;
-//     }
-
-//     // Check if the transaction has been processed
-//     if (!user.processedTransactions.includes(mockTxId)) {
-//       const gameValue = valueTon * USD_TO_GAME_VALUE;  // Convert TON to in-game value
-
-//       // Update user's balance and add transaction to processedTransactions
-//       await usersCollection.updateOne(
-//         { _id: userId },
-//         { 
-//           $inc: { balance: gameValue }, 
-//           $push: { processedTransactions: mockTxId } 
-//         }
-//       );
-
-//       console.log(`Mock transaction processed for user ${userId}: ${valueTon} TON (${gameValue} in-game value)`);
-//     }
-//   } catch (error) {
-//     console.error('Error processing mock transaction:', error.message);
-//   }
-// }
-
-// // Call mockTransaction to simulate a transaction every 30 seconds (just for testing)
-// setInterval(mockTransaction, 30000);
