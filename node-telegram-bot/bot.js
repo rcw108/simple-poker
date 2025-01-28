@@ -151,18 +151,6 @@ async function checkForPayment(chatId, commentId, amountNano) {
 
 
 
-async function mockTransaction(userId, amount) {
-    try {
-        const amountNano = TonWeb.utils.toNano(amount.toString());
-        await updateUserBalance(userId, amountNano, `mock_tx_${Date.now()}`);
-
-        const balance = await getUserBalance(userId);
-        bot.sendMessage(userId, `Mock transaction completed! Your new balance is ${balance} in-game units.`);
-    } catch (error) {
-        console.error('Error in mock transaction:', error);
-    }
-}
-
 
 process.on('SIGINT', async () => {
     console.log('Bot is shutting down...');
@@ -177,8 +165,6 @@ connectToDatabase().then(() => {
     bot.on('polling_error', (error) => console.log(error));
     console.log('Bot is running...');
     
-
-    mockTransaction(299283124, 2);
 }).catch(error => {
     console.error('Failed to start the bot:', error);
 });

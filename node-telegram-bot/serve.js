@@ -186,26 +186,58 @@ io.on('connection', (socket) => {
 });
 
   // Handle revealing cards
-  socket.on('revealCards', ({ roomId }) => {
-      const room = gameRooms[roomId];
-      if (!room || room.stage !== 'betting') {
-          socket.emit('error', 'Cannot reveal cards');
-          return;
-      }
+  socket.on('revealCards', async ({ roomId }) => {
+    const room = gameRooms[roomId];
+    if (!room || room.stage !== 'betting') {
+        socket.emit('error', 'Cannot reveal cards');
+        return;
+    }
 
-      const results = room.players.map((player) => {
-          const hand = evaluateHand([...player.cards, ...room.tableCards]);
-          return { playerId: player.id, username: player.username, hand };
-      });
+    const results = room.players.map((player) => {
+        const hand = evaluateHand([...player.cards, ...room.tableCards]);
+        return { playerId: player.id, username: player.username, hand };
+    });
 
-      const winner = results.reduce((best, current) => {
-          return current.hand.rank > best.hand.rank ? current : best;
-      });
+    const winner = results.reduce((best, current) => {
+        return current.hand.rank > best.hand.rank ? current : best;
+    });
 
-      room.stage = 'reveal';
-      io.to(roomId).emit('gameResult', { winner, results });
-      console.log(`Game result revealed in room ${roomId}`);
-  });
+    room.stage = 'reveal';
+
+    // Update balances
+    const bank = room.players.reduce((acc, player) => acc + player.balance, 0);
+    const playersCollection = db.collection('users');
+
+    try {
+        await playersCollection.updateOne(
+            { id: winner.playerId },
+            { $inc: { balance: bank } }
+        );
+
+        // Save the game result
+        const gamesCollection = db.collection('games');
+        await gamesCollection.insertOne({
+            roomId,
+            winnerId: winner.playerId,
+            winnerHand: winner.hand,
+            players: room.players.map(player => ({
+                id: player.id,
+                username: player.username,
+                balance: player.balance,
+                hand: results.find(res => res.playerId === player.id)?.hand,
+            })),
+            tableCards: room.tableCards,
+            bank,
+            timestamp: new Date(),
+        });
+
+        io.to(roomId).emit('gameResult', { winner, results, bank });
+        console.log(`Game result saved and balances updated for room ${roomId}`);
+    } catch (error) {
+        console.error('Error saving game result or updating balances:', error);
+        socket.emit('error', 'Internal server error.');
+    }
+});
 
   // Start a new round
   socket.on('startNewRound', ({ roomId }) => {
@@ -232,29 +264,6 @@ io.on('connection', (socket) => {
       console.log(`User disconnected: ${socket.id}`);
   });
 });
-
-  app.post('/api/saveGameResult', async (req, res) => {
-    const { roomId, winnerId, bank } = req.body;
-  
-    if (!roomId || !winnerId || !bank) {
-      return res.status(400).json({ success: false, message: 'Missing required fields.' });
-    }
-  
-    try {
-      const gamesCollection = db.collection('games');
-      await gamesCollection.insertOne({
-        roomId,
-        winnerId,
-        bank,
-        timestamp: new Date(),
-      });
-  
-      return res.json({ success: true, message: 'Game result saved.' });
-    } catch (error) {
-      console.error('Error saving game result:', error.message);
-      res.status(500).json({ success: false, message: 'Internal server error.' });
-    }
-  });
 
 // Middleware
 app.use(cors({
