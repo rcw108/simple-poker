@@ -112,6 +112,36 @@ const PokerTable = () => {
 		}
 	}, [telegramUser])
 
+	// Periodically sync balance with backend to catch deposits and other updates
+	useEffect(() => {
+		if (!telegramUser || !telegramUser.id) return
+
+		const syncBalance = () => {
+			fetch(`${API_BASE_URL}/api/getBalance?userId=${telegramUser.id}`)
+				.then((res) => res.json())
+				.then((data) => {
+					if (data.success) {
+						setBalance(prevBalance => {
+							if (prevBalance !== data.balance) {
+								console.log('Balance synced from backend:', data.balance, 'Previous:', prevBalance)
+								return data.balance
+							}
+							return prevBalance
+						})
+					}
+				})
+				.catch((error) => {
+					console.error('Error syncing balance:', error)
+				})
+		}
+
+		// Sync immediately and then every 10 seconds
+		syncBalance()
+		const interval = setInterval(syncBalance, 10000)
+
+		return () => clearInterval(interval)
+	}, [telegramUser?.id])
+
 	const bankRef = useRef(null)
 
 	const handlePlayBalanceSound = () => {
