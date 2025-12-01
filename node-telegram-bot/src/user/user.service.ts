@@ -1,8 +1,8 @@
 import expressAsyncHandler from 'express-async-handler'
 import { Collection, ObjectId } from 'mongodb'
 import TonWeb from 'tonweb'
-import { IUser } from '../interfaces/card.interface'
-import { db, walletManager } from '../serve'
+import { IUser } from '../interfaces/card.interface.js'
+import { db, walletManager } from '../serve.js'
 
 export const getDepositAddress = expressAsyncHandler(async (req, res) => {
 	const userId = req.query.userId
@@ -13,9 +13,15 @@ export const getDepositAddress = expressAsyncHandler(async (req, res) => {
 		return
 	}
 
+	if (!db) {
+		console.error('Database not connected in getDepositAddress')
+		res.status(500).json({ success: false, message: 'Database not available.' })
+		return
+	}
+
 	try {
 		const usersCollection = db.collection('users')
-		const user = await usersCollection.findOne({ id: String(userId) })
+		const user = await usersCollection.findOne({ id: parseInt(String(userId)) })
 
 		if (!user) {
 			console.error(`User not found: ${userId}`)
@@ -55,9 +61,15 @@ export const getBalance = expressAsyncHandler(async (req, res) => {
 		return
 	}
 
+	if (!db) {
+		console.error('Database not connected in getBalance')
+		res.status(500).json({ success: false, message: 'Database not available.' })
+		return
+	}
+
 	try {
 		const usersCollection = db.collection('users')
-		const user = await usersCollection.findOne({ id: String(userId) })
+		const user = await usersCollection.findOne({ id: parseInt(String(userId)) })
 
 		if (!user) {
 			console.error(`User not found: ${userId}`)
@@ -79,6 +91,12 @@ export const withdraw = expressAsyncHandler(
 			res
 				.status(400)
 				.json({ success: false, message: 'Missing required fields.' })
+			return
+		}
+
+		if (!db) {
+			console.error('Database not connected in withdraw')
+			res.status(500).json({ success: false, message: 'Database not available.' })
 			return
 		}
 
@@ -149,10 +167,16 @@ export const updateBalance = expressAsyncHandler(async (req, res) => {
 		return
 	}
 
+	if (!db) {
+		console.error('Database not connected in updateBalance')
+		res.status(500).json({ success: false, message: 'Database not available.' })
+		return
+	}
+
 	try {
 		const usersCollection = db.collection('users')
 		const result = await usersCollection.updateOne(
-			{ id: userId },
+			{ id: parseInt(String(userId)) },
 			{ $set: { balance } }
 		)
 
@@ -171,22 +195,25 @@ export const updateBalance = expressAsyncHandler(async (req, res) => {
 })
 
 export const verifyUser = expressAsyncHandler(async (req, res) => {
-	console.log('Incoming verifyUser request:')
-	console.log('Headers:', req.headers)
-	console.log('Body:', req.body)
 	const { initDataUnsafe } = req.body
-
-	console.log('Received initDataUnsafe:', initDataUnsafe)
 
 	if (!initDataUnsafe || !initDataUnsafe.user || !initDataUnsafe.user.id) {
 		res
 			.status(400)
-			.json({ success: false, message: 'Invalid or missing user data.' })
+			.json({ success: false, message: 'Invalid or missing user data. Please ensure you are accessing this from a Telegram WebApp.' })
 		return
 	}
-	const userId = initDataUnsafe.user.id
+	
+	// Ensure userId is a number (Telegram sends it as number, but ensure consistency)
+	const userId = parseInt(String(initDataUnsafe.user.id))
 	const firstName = initDataUnsafe.user.first_name
 	const username = initDataUnsafe.user.username
+
+	if (!db) {
+		console.error('Database not connected in verifyUser')
+		res.status(500).json({ success: false, message: 'Database not available. Please try again later.' })
+		return
+	}
 
 	try {
 		const usersCollection = db.collection('users')
@@ -198,6 +225,8 @@ export const verifyUser = expressAsyncHandler(async (req, res) => {
 			res.json({ success: true, user })
 			return
 		}
+		
+		// Create new user with numeric ID
 		user = {
 			_id: new ObjectId(),
 			id: userId,
@@ -206,6 +235,7 @@ export const verifyUser = expressAsyncHandler(async (req, res) => {
 			balance: 0,
 			bonusBalance: 100,
 			processedTransactions: [],
+			createdAt: new Date(),
 		}
 
 		await usersCollection.insertOne(user)

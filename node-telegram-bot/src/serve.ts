@@ -1,5 +1,6 @@
-require('dotenv').config({ path: '../.env' })
-
+import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import express from 'express'
@@ -9,10 +10,14 @@ import { Server } from 'socket.io'
 import TonWeb from 'tonweb'
 import { Address } from 'tonweb/dist/types/utils/address'
 import nacl from 'tweetnacl'
-import { GameRoom } from './interfaces/card.interface'
-import { initializeSockets } from './socket/socket.controller'
-import userController from './user/user.controller'
-import { shuffleDeck } from './utils'
+import { GameRoom } from './interfaces/card.interface.js'
+import { initializeSockets } from './socket/socket.controller.js'
+import userController from './user/user.controller.js'
+import { shuffleDeck } from './utils.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 const app = express()
 const server = http.createServer(app)
@@ -51,23 +56,39 @@ app.use(
 app.use(bodyParser.json())
 app.use(express.json())
 
-const uri = process.env.MONGO_URI || 'mongodb://localhost:27017'
-const dbName = 'simple_poker'
+const uri = process.env.MONGODB_URI || ''
+const dbName = process.env.DB_NAME || ''
 
 export let db: Db
+let mongoClient: MongoClient | null = null
 
-async function connectMongoDB() {
-	try {
-		const client = await MongoClient.connect(uri)
-		console.log('Connected to MongoDB')
-		db = client.db(dbName)
-	} catch (err) {
-		if (err instanceof Error) {
-			console.error('Error connecting to MongoDB:', err.message)
-		} else {
-			console.error('Error connecting to MongoDB:', err)
+async function connectMongoDB(retries = 5, delay = 3000) {
+	for (let i = 0; i < retries; i++) {
+		try {
+			const client = await MongoClient.connect(uri)
+			console.log('Connected to MongoDB')
+			mongoClient = client
+			db = client.db(dbName)
+			return
+		} catch (err) {
+			const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+			console.error(
+				`Error connecting to MongoDB (attempt ${i + 1}/${retries}):`,
+				errorMessage
+			)
+			
+			if (i < retries - 1) {
+				console.log(`Retrying in ${delay / 1000} seconds...`)
+				await new Promise(resolve => setTimeout(resolve, delay))
+			} else {
+				console.error(
+					'Failed to connect to MongoDB after all retries. Server will continue but database operations will fail.'
+				)
+				console.error(
+					'Please ensure MongoDB is running and accessible.'
+				)
+			}
 		}
-		process.exit(1)
 	}
 }
 
@@ -101,7 +122,7 @@ export const walletManager = (() => {
 		;(async () => {
 			try {
 				walletAddress = await wallet.getAddress()
-				console.log('Wallet Address:', walletAddress.toString(true, true, true))
+				// Wallet address initialized successfully (not logged for security)
 			} catch (error) {
 				console.error('Error retrieving wallet address:', error)
 			}

@@ -6,8 +6,8 @@ import {
 	getStraight,
 	getThreeOfAKind,
 	getTwoPair,
-} from './combination'
-import { Card, Rank, Suit } from './interfaces/card.interface'
+} from './combination.js'
+import { Card, Rank, Suit } from './interfaces/card.interface.js'
 
 export const shuffleDeck = () => {
 	const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades']

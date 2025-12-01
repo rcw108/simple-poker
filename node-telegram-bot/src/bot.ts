@@ -1,9 +1,14 @@
+import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { Db, MongoClient, PushOperator } from 'mongodb'
 import TelegramBot from 'node-telegram-bot-api'
-import path from 'path'
 import QRCode from 'qrcode'
 import TonWeb from 'tonweb'
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || '', {
 	polling: true,
@@ -17,6 +22,16 @@ const tonweb = new TonWeb(
 const walletAddress = process.env.WALLET_ADDRESS
 const presetAmounts = [1, 2, 5, 10]
 const gameUrl = process.env.GAME_URL || 'https://simple-poker-kappa.vercel.app/'
+
+// Helper function to create a game button (Web App for HTTPS, URL for HTTP)
+function createGameButton(text: string, url: string) {
+	if (url.startsWith('https://')) {
+		return { text, web_app: { url } }
+	} else {
+		// For HTTP URLs (like localhost), use regular URL button
+		return { text, url }
+	}
+}
 
 let db: Db
 let client: MongoClient
@@ -33,7 +48,8 @@ async function connectToDatabase() {
 		db = client.db(process.env.DB_NAME || '')
 		console.log('Connected to MongoDB')
 	} catch (error) {
-		console.error('Failed to connect to MongoDB:', error)
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+		console.error('Failed to connect to MongoDB:', errorMessage)
 		process.exit(1)
 	}
 }
@@ -45,10 +61,11 @@ async function updateUserBalance(
 ) {
 	if (!db) throw new Error('Database not connected')
 
+	const userIdNum = parseInt(userId)
 	const amountAsNumber = Number(TonWeb.utils.fromNano(amountNano))
 
 	await db.collection('users').updateOne(
-		{ id: userId },
+		{ id: userIdNum },
 		{
 			$inc: { balance: amountAsNumber },
 			$push: {
@@ -69,18 +86,87 @@ async function getUserBalance(userId: string) {
 		throw new Error('Database not connected')
 	}
 	try {
-		const user = await db.collection('users').findOne({ id: parseInt(userId) })
+		const userIdNum = parseInt(userId)
+		let user = await db.collection('users').findOne({ id: userIdNum })
+		
 		if (!user) {
-			console.error(`User with ID ${userId} not found`)
-			return 0
+			// Auto-register user if not found
+			console.log(`Registering new user with ID ${userId}`)
+			await db.collection('users').insertOne({
+				id: userIdNum,
+				balance: 0,
+				processedTransactions: [],
+				createdAt: new Date(),
+			})
+			user = await db.collection('users').findOne({ id: userIdNum })
+			if (!user) {
+				throw new Error(`Failed to create user ${userId}`)
+			}
+			console.log(`User ${userId} registered successfully`)
 		}
+		
 		console.log(`Balance for user ${userId}: ${user.balance}`)
-		return user.balance
+		return user.balance || 0
 	} catch (error) {
 		console.error(`Error fetching balance for user ${userId}:`, error)
 		throw new Error('Error fetching user balance')
 	}
 }
+
+bot.onText(/\/start/, async msg => {
+	const chatId = msg.chat.id
+	try {
+		const balance = await getUserBalance(String(chatId))
+		const welcomeMessage = `🎮 Welcome to Simple Poker Bot!\n\n` +
+			`Your current balance: ${balance} in-game units\n\n` +
+			`Available commands:\n` +
+			`/game - Start playing poker\n` +
+			`/balance - Check your balance\n` +
+			`/help - Show this help message`
+
+		const keyboard = {
+			inline_keyboard: [
+				[createGameButton('🎮 Play Game', gameUrl)],
+				[{ text: '💰 Add Funds', callback_data: 'add_funds' }],
+			],
+		}
+
+		bot.sendMessage(chatId, welcomeMessage, { reply_markup: keyboard })
+	} catch (error) {
+		console.error('Error in /start command:', error)
+		bot.sendMessage(
+			chatId,
+			'Welcome to Simple Poker Bot! Use /game to start playing or /help for more information.'
+		)
+	}
+})
+
+bot.onText(/\/balance/, async msg => {
+	const chatId = msg.chat.id
+	try {
+		const balance = await getUserBalance(String(chatId))
+		bot.sendMessage(chatId, `Your current balance is: ${balance} in-game units`)
+	} catch (error) {
+		console.error('Error fetching balance for /balance command:', error)
+		bot.sendMessage(
+			chatId,
+			'An error occurred while fetching your balance. Please try again later.'
+		)
+	}
+})
+
+bot.onText(/\/help/, async msg => {
+	const chatId = msg.chat.id
+	const helpMessage = `📖 Simple Poker Bot Help\n\n` +
+		`Commands:\n` +
+		`/start - Start the bot and see your balance\n` +
+		`/game - Open the game interface\n` +
+		`/balance - Check your current balance\n` +
+		`/help - Show this help message\n\n` +
+		`To add funds, use the "Add Funds" button in the game menu.`
+
+	bot.sendMessage(chatId, helpMessage)
+})
 
 bot.onText(/\/game/, async msg => {
 	const chatId = msg.chat.id
@@ -89,7 +175,7 @@ bot.onText(/\/game/, async msg => {
 
 		const keyboard = {
 			inline_keyboard: [
-				[{ text: 'Play Game', web_app: { url: gameUrl } }],
+				[createGameButton('Play Game', gameUrl)],
 				[{ text: 'Add Funds', callback_data: 'add_funds' }],
 			],
 		}

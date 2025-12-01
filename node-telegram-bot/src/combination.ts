@@ -1,4 +1,4 @@
-import { Card, Rank, Suit } from './interfaces/card.interface'
+import { Card, Rank, Suit } from './interfaces/card.interface.js'
 
 type RankCounts = {
 	[key in Rank]: number

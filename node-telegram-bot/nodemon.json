@@ -1,5 +1,6 @@
 {
-	"watch": ["src/**/*.js"],
+	"watch": ["dist/**/*.js"],
 	"ext": "js",
-	"ignore": ["node_modules/**/*", "src/interfaces/**/*"]
+	"ignore": ["node_modules/**/*", "src/interfaces/**/*"],
+	"exec": "node dist/serve.js"
 }

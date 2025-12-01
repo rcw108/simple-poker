@@ -1,92 +1,145 @@
-"use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const mongodb_1 = require("mongodb");
-const node_telegram_bot_api_1 = __importDefault(require("node-telegram-bot-api"));
-const path_1 = __importDefault(require("path"));
-const qrcode_1 = __importDefault(require("qrcode"));
-const tonweb_1 = __importDefault(require("tonweb"));
-require('dotenv').config({ path: path_1.default.resolve(__dirname, '../.env') });
-const bot = new node_telegram_bot_api_1.default(process.env.TELEGRAM_BOT_TOKEN || '', {
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { MongoClient } from 'mongodb';
+import TelegramBot from 'node-telegram-bot-api';
+import QRCode from 'qrcode';
+import TonWeb from 'tonweb';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN || '', {
     polling: true,
 });
-const tonweb = new tonweb_1.default(new tonweb_1.default.HttpProvider('https://toncenter.com/api/v2/jsonRPC', {
+const tonweb = new TonWeb(new TonWeb.HttpProvider('https://toncenter.com/api/v2/jsonRPC', {
     apiKey: process.env.TONCENTER_API_KEY,
 }));
 const walletAddress = process.env.WALLET_ADDRESS;
 const presetAmounts = [1, 2, 5, 10];
 const gameUrl = process.env.GAME_URL || 'https://simple-poker-kappa.vercel.app/';
+// Helper function to create a game button (Web App for HTTPS, URL for HTTP)
+function createGameButton(text, url) {
+    if (url.startsWith('https://')) {
+        return { text, web_app: { url } };
+    }
+    else {
+        // For HTTP URLs (like localhost), use regular URL button
+        return { text, url };
+    }
+}
 let db;
 let client;
-function connectToDatabase() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            client = yield mongodb_1.MongoClient.connect(process.env.MONGODB_URI || '');
-            db = client.db(process.env.DB_NAME || '');
-            console.log('Connected to MongoDB');
-        }
-        catch (error) {
-            console.error('Failed to connect to MongoDB:', error);
-            process.exit(1);
-        }
-    });
+async function connectToDatabase() {
+    try {
+        client = await MongoClient.connect(process.env.MONGODB_URI || '');
+        db = client.db(process.env.DB_NAME || '');
+        console.log('Connected to MongoDB');
+    }
+    catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Failed to connect to MongoDB:', errorMessage);
+        process.exit(1);
+    }
 }
-function updateUserBalance(userId, amountNano, txId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!db)
-            throw new Error('Database not connected');
-        const amountAsNumber = Number(tonweb_1.default.utils.fromNano(amountNano));
-        yield db.collection('users').updateOne({ id: userId }, {
-            $inc: { balance: amountAsNumber },
-            $push: {
-                processedTransactions: {
-                    id: txId,
-                    amount: amountAsNumber,
-                    timestamp: new Date(),
-                },
+async function updateUserBalance(userId, amountNano, txId) {
+    if (!db)
+        throw new Error('Database not connected');
+    const userIdNum = parseInt(userId);
+    const amountAsNumber = Number(TonWeb.utils.fromNano(amountNano));
+    await db.collection('users').updateOne({ id: userIdNum }, {
+        $inc: { balance: amountAsNumber },
+        $push: {
+            processedTransactions: {
+                id: txId,
+                amount: amountAsNumber,
+                timestamp: new Date(),
             },
-        }, { upsert: true });
-    });
+        },
+    }, { upsert: true });
 }
-function getUserBalance(userId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!db) {
-            console.error('Database not connected');
-            throw new Error('Database not connected');
-        }
-        try {
-            const user = yield db.collection('users').findOne({ id: parseInt(userId) });
+async function getUserBalance(userId) {
+    if (!db) {
+        console.error('Database not connected');
+        throw new Error('Database not connected');
+    }
+    try {
+        const userIdNum = parseInt(userId);
+        let user = await db.collection('users').findOne({ id: userIdNum });
+        if (!user) {
+            // Auto-register user if not found
+            console.log(`Registering new user with ID ${userId}`);
+            await db.collection('users').insertOne({
+                id: userIdNum,
+                balance: 0,
+                processedTransactions: [],
+                createdAt: new Date(),
+            });
+            user = await db.collection('users').findOne({ id: userIdNum });
             if (!user) {
-                console.error(`User with ID ${userId} not found`);
-                return 0;
+                throw new Error(`Failed to create user ${userId}`);
             }
-            console.log(`Balance for user ${userId}: ${user.balance}`);
-            return user.balance;
+            console.log(`User ${userId} registered successfully`);
         }
-        catch (error) {
-            console.error(`Error fetching balance for user ${userId}:`, error);
-            throw new Error('Error fetching user balance');
-        }
-    });
+        console.log(`Balance for user ${userId}: ${user.balance}`);
+        return user.balance || 0;
+    }
+    catch (error) {
+        console.error(`Error fetching balance for user ${userId}:`, error);
+        throw new Error('Error fetching user balance');
+    }
 }
-bot.onText(/\/game/, (msg) => __awaiter(void 0, void 0, void 0, function* () {
+bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-        const balance = yield getUserBalance(String(chatId));
+        const balance = await getUserBalance(String(chatId));
+        const welcomeMessage = `🎮 Welcome to Simple Poker Bot!\n\n` +
+            `Your current balance: ${balance} in-game units\n\n` +
+            `Available commands:\n` +
+            `/game - Start playing poker\n` +
+            `/balance - Check your balance\n` +
+            `/help - Show this help message`;
         const keyboard = {
             inline_keyboard: [
-                [{ text: 'Play Game', web_app: { url: gameUrl } }],
+                [createGameButton('🎮 Play Game', gameUrl)],
+                [{ text: '💰 Add Funds', callback_data: 'add_funds' }],
+            ],
+        };
+        bot.sendMessage(chatId, welcomeMessage, { reply_markup: keyboard });
+    }
+    catch (error) {
+        console.error('Error in /start command:', error);
+        bot.sendMessage(chatId, 'Welcome to Simple Poker Bot! Use /game to start playing or /help for more information.');
+    }
+});
+bot.onText(/\/balance/, async (msg) => {
+    const chatId = msg.chat.id;
+    try {
+        const balance = await getUserBalance(String(chatId));
+        bot.sendMessage(chatId, `Your current balance is: ${balance} in-game units`);
+    }
+    catch (error) {
+        console.error('Error fetching balance for /balance command:', error);
+        bot.sendMessage(chatId, 'An error occurred while fetching your balance. Please try again later.');
+    }
+});
+bot.onText(/\/help/, async (msg) => {
+    const chatId = msg.chat.id;
+    const helpMessage = `📖 Simple Poker Bot Help\n\n` +
+        `Commands:\n` +
+        `/start - Start the bot and see your balance\n` +
+        `/game - Open the game interface\n` +
+        `/balance - Check your current balance\n` +
+        `/help - Show this help message\n\n` +
+        `To add funds, use the "Add Funds" button in the game menu.`;
+    bot.sendMessage(chatId, helpMessage);
+});
+bot.onText(/\/game/, async (msg) => {
+    const chatId = msg.chat.id;
+    try {
+        const balance = await getUserBalance(String(chatId));
+        const keyboard = {
+            inline_keyboard: [
+                [createGameButton('Play Game', gameUrl)],
                 [{ text: 'Add Funds', callback_data: 'add_funds' }],
             ],
         };
@@ -96,8 +149,8 @@ bot.onText(/\/game/, (msg) => __awaiter(void 0, void 0, void 0, function* () {
         console.error('Error fetching balance for /game command:', error);
         bot.sendMessage(chatId, 'An error occurred while fetching your balance. Please try again later.');
     }
-}));
-bot.on('callback_query', (callbackQuery) => __awaiter(void 0, void 0, void 0, function* () {
+});
+bot.on('callback_query', async (callbackQuery) => {
     if (!callbackQuery.message) {
         console.error('Callback query message is undefined');
         return;
@@ -116,61 +169,57 @@ bot.on('callback_query', (callbackQuery) => __awaiter(void 0, void 0, void 0, fu
     }
     else if (data && data.startsWith('add_')) {
         const amount = parseFloat(data.split('_')[1]);
-        yield generatePaymentLink(String(chatId), amount);
+        await generatePaymentLink(String(chatId), amount);
     }
     bot.answerCallbackQuery(callbackQuery.id);
-}));
-function generatePaymentLink(chatId, amount) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const commentId = `${chatId}_${Date.now()}`;
-        const amountNano = tonweb_1.default.utils.toNano(amount.toString());
-        const paymentUrl = `https://app.tonkeeper.com/transfer/${walletAddress}?amount=${amountNano}&text=${commentId}`;
-        const qrCode = yield qrcode_1.default.toDataURL(paymentUrl);
-        bot.sendPhoto(chatId, Buffer.from(qrCode.split(',')[1], 'base64'), {
-            caption: `Please send ${amount} TON to this address. You can use the QR code or this link: ${paymentUrl}`,
-        });
-        checkForPayment(chatId, commentId, amountNano);
+});
+async function generatePaymentLink(chatId, amount) {
+    const commentId = `${chatId}_${Date.now()}`;
+    const amountNano = TonWeb.utils.toNano(amount.toString());
+    const paymentUrl = `https://app.tonkeeper.com/transfer/${walletAddress}?amount=${amountNano}&text=${commentId}`;
+    const qrCode = await QRCode.toDataURL(paymentUrl);
+    bot.sendPhoto(chatId, Buffer.from(qrCode.split(',')[1], 'base64'), {
+        caption: `Please send ${amount} TON to this address. You can use the QR code or this link: ${paymentUrl}`,
     });
+    checkForPayment(chatId, commentId, amountNano);
 }
-function checkForPayment(chatId, commentId, amountNano) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let attempts = 0;
-        const maxAttempts = 60;
-        const checkInterval = setInterval(() => __awaiter(this, void 0, void 0, function* () {
-            attempts++;
-            if (attempts > maxAttempts) {
+async function checkForPayment(chatId, commentId, amountNano) {
+    let attempts = 0;
+    const maxAttempts = 60;
+    const checkInterval = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(checkInterval);
+            bot.sendMessage(chatId, 'Payment time expired. Please try again if you still want to add funds.');
+            return;
+        }
+        try {
+            const transactions = await tonweb.provider.getTransactions(walletAddress || '');
+            const matchingTx = transactions.find((tx) => tx.in_msg &&
+                tx.in_msg.message === commentId &&
+                tx.in_msg.value &&
+                tx.in_msg.value >= amountNano);
+            if (matchingTx) {
                 clearInterval(checkInterval);
-                bot.sendMessage(chatId, 'Payment time expired. Please try again if you still want to add funds.');
-                return;
+                await updateUserBalance(chatId, amountNano, matchingTx.transaction_id.hash);
+                const newBalanceNano = await getUserBalance(chatId);
+                const newBalanceTon = TonWeb.utils.fromNano(newBalanceNano);
+                bot.sendMessage(chatId, `Payment of ${TonWeb.utils.fromNano(amountNano)} TON received successfully! Your new balance is ${newBalanceTon} TON.`);
             }
-            try {
-                const transactions = yield tonweb.provider.getTransactions(walletAddress || '');
-                const matchingTx = transactions.find((tx) => tx.in_msg &&
-                    tx.in_msg.message === commentId &&
-                    tx.in_msg.value &&
-                    tx.in_msg.value >= amountNano);
-                if (matchingTx) {
-                    clearInterval(checkInterval);
-                    yield updateUserBalance(chatId, amountNano, matchingTx.transaction_id.hash);
-                    const newBalanceNano = yield getUserBalance(chatId);
-                    const newBalanceTon = tonweb_1.default.utils.fromNano(newBalanceNano);
-                    bot.sendMessage(chatId, `Payment of ${tonweb_1.default.utils.fromNano(amountNano)} TON received successfully! Your new balance is ${newBalanceTon} TON.`);
-                }
-            }
-            catch (error) {
-                console.error('Error checking for payment:', error);
-            }
-        }), 10000);
-    });
+        }
+        catch (error) {
+            console.error('Error checking for payment:', error);
+        }
+    }, 10000);
 }
-process.on('SIGINT', () => __awaiter(void 0, void 0, void 0, function* () {
+process.on('SIGINT', async () => {
     console.log('Bot is shutting down...');
     if (client) {
-        yield client.close();
+        await client.close();
         console.log('Closed MongoDB connection');
     }
     process.exit(0);
-}));
+});
 connectToDatabase()
     .then(() => {
     bot.on('polling_error', error => console.log(error));
