@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import io from 'socket.io-client'
+import { SOCKET_URL } from '../config'
 
 const TestPage = () => {
 	const [socket, setSocket] = useState(null)
@@ -11,7 +12,7 @@ const TestPage = () => {
 
 	// Initialize WebSocket connection
 	useEffect(() => {
-		const newSocket = io('http://localhost:80') // Replace with your backend server URL
+		const newSocket = io(SOCKET_URL) // Uses ngrok URL from config
 		setSocket(newSocket)
 
 		// Event listeners for WebSocket

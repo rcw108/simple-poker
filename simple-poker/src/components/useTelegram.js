@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../config';
 
 export const useTelegram = (setBank) => {
   const [telegramUser, setTelegramUser] = useState(null);
@@ -19,7 +20,7 @@ export const useTelegram = (setBank) => {
         setTelegramUser(initDataUnsafe.user);
 
         // Fetch user balance from backend
-        fetch(`https://game-baboon-included.ngrok-free.app/api/getBalance?userId=${initDataUnsafe.user.id}`)
+        fetch(`${API_BASE_URL}/api/getBalance?userId=${initDataUnsafe.user.id}`)
           .then((res) => res.json())
           .then((data) => {
             if (data.success) {
