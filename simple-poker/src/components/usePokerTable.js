@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBalance } from '../providers/BalanceProvider'
+import { API_BASE_URL } from '../config'
 import {
 	getFlush,
 	getFourOfAKind,
@@ -467,7 +468,34 @@ export const usePokerTable = (telegramUser, bank) => {
 			setChipBank(true)
 		}, 1600)
 		setTimeout(() => {
-			setBalance(prevBank => prevBank - bet + newWinnings)
+			setBalance(prevBank => {
+				const newBalance = prevBank - bet + newWinnings
+				// Sync balance with backend
+				if (telegramUser && telegramUser.id) {
+					fetch(`${API_BASE_URL}/api/updateBalance`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							userId: telegramUser.id,
+							balance: newBalance,
+						}),
+					})
+						.then(res => res.json())
+						.then(data => {
+							if (data.success) {
+								console.log('Balance successfully updated in the backend:', newBalance)
+							} else {
+								console.error(`Error updating balance: ${data.message}`)
+							}
+						})
+						.catch(error => {
+							console.error('Error updating balance:', error)
+						})
+				}
+				return newBalance
+			})
 		}, 2000)
 	}
 

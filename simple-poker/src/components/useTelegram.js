@@ -25,13 +25,17 @@ export const useTelegram = (setBank) => {
           .then((data) => {
             if (data.success) {
               // Update the bank balance in the parent component via setBank
-              setBank(data.balance);
+              const balance = data.balance ?? 300;
+              console.log('Initial balance loaded from backend:', balance);
+              setBank(balance);
             } else {
               console.error('Error fetching balance:', data.message);
+              setBank(0); // Set default balance on error
             }
           })
           .catch((error) => {
             console.error('Error fetching balance:', error);
+            setBank(0); // Set default balance on error
           });
       } else {
         console.error('Telegram User data is missing.');
