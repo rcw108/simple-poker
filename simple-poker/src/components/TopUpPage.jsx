@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const TopUpInGame = () => {
   const [userId] = useState('test_user');  // Hardcoding the userId for testing
@@ -8,7 +9,7 @@ const TopUpInGame = () => {
 
   const handleTopUp = async () => {
     try {
-      const response = await axios.get(`http://localhost:3001/api/getDepositAddress`, {
+      const response = await axios.get(`${API_BASE_URL}/api/getDepositAddress`, {
         params: { userId },  // Hardcoded value is passed here
       });
       if (response.data.success) {

@@ -8,6 +8,7 @@ import { TelegramUser } from '../ui/telegramUser/TelegramUser'
 import './PokerTable.css'
 import { usePokerTable } from './usePokerTable'
 import { useTelegram } from './useTelegram'
+import { API_BASE_URL } from '../config'
 
 const PokerTable = () => {
 	const { balance, setBalance, setSound, sound } = useBalance()
@@ -152,7 +153,7 @@ const PokerTable = () => {
 		setBalance(newBalance)
 
 		// Send a request to the backend to update the user's balance in the database
-		fetch('https://game-baboon-included.ngrok-free.app/api/updateBalance', {
+		fetch(`${API_BASE_URL}/api/updateBalance`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -185,7 +186,7 @@ const PokerTable = () => {
 	const handleWithdraw = e => {
 		e.preventDefault()
 
-		fetch('https://game-baboon-included.ngrok-free.app/api/withdraw', {
+		fetch(`${API_BASE_URL}/api/withdraw`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({

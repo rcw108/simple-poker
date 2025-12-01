@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {QRCodeSVG} from 'qrcode.react'; // To display the QR code for payment
 import './BalanceOptions.css';
+import { API_BASE_URL } from '../config';
 
 const BalanceOptions = () => {
   const [amount, setAmount] = useState('');
@@ -13,7 +14,7 @@ const BalanceOptions = () => {
 
   useEffect(() => {
     // Fetch the deposit address from the backend when the page loads
-    fetch(`https://game-baboon-included.ngrok-free.app/api/getDepositAddress?userId=${userId}`)
+    fetch(`${API_BASE_URL}/api/getDepositAddress?userId=${userId}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.success) {
