@@ -82,6 +82,7 @@ const PokerTable = () => {
 		setWithdrawAmount,
 		withdrawAddress,
 		setWithdrawAddress,
+		balanceError,
 	} = useTelegram(setBalance) // The bank is set by the useTelegram hook
 
 	const {
@@ -112,6 +113,8 @@ const PokerTable = () => {
 		}
 	}, [telegramUser])
 
+	const [syncError, setSyncError] = useState(null)
+
 	// Periodically sync balance with backend to catch deposits and other updates
 	useEffect(() => {
 		if (!telegramUser || !telegramUser.id) return
@@ -128,10 +131,15 @@ const PokerTable = () => {
 							}
 							return prevBalance
 						})
+						setSyncError(null) // Clear error on success
+					} else {
+						setSyncError(data.message || 'Failed to sync balance')
 					}
 				})
 				.catch((error) => {
+					const errorMsg = error.message || 'Network error syncing balance'
 					console.error('Error syncing balance:', error)
+					setSyncError(errorMsg)
 				})
 		}
 
@@ -176,6 +184,9 @@ const PokerTable = () => {
 	if (balance === null) {
 		return <div>Loading your balance...</div>
 	}
+
+	// Display errors if any
+	const hasErrors = balanceError || syncError
 
 	const handleGameResult = winnings => {
 		// Adjust the in-game balance based on winnings or losses
@@ -245,6 +256,27 @@ const PokerTable = () => {
 
 	return (
 		<div className='poker-table'>
+			{hasErrors && (
+				<div style={{
+					position: 'fixed',
+					top: '10px',
+					left: '50%',
+					transform: 'translateX(-50%)',
+					zIndex: 10000,
+					backgroundColor: '#e74c3c',
+					color: '#fff',
+					padding: '12px 20px',
+					borderRadius: '8px',
+					fontSize: '14px',
+					maxWidth: '90%',
+					boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+					textAlign: 'center'
+				}}>
+					<div style={{ fontWeight: 'bold', marginBottom: '5px' }}>⚠️ Error</div>
+					{balanceError && <div style={{ marginBottom: '5px' }}>Balance: {balanceError}</div>}
+					{syncError && <div>Sync: {syncError}</div>}
+				</div>
+			)}
 			{telegramUser && <TelegramUser telegramUser={telegramUser} />}
 			<div className='sound' onClick={() => setSound(!sound)}>
 				{sound ? (
