@@ -1,5 +1,5 @@
-"use strict";
-const shuffleDeck = () => {
+import { getFlush, getFourOfAKind, getFullHouse, getPair, getStraight, getThreeOfAKind, getTwoPair, } from './combination.js';
+export const shuffleDeck = () => {
     const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
     const ranks = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K', 'A'];
     const deck = [];
@@ -14,7 +14,7 @@ const shuffleDeck = () => {
     }
     return deck;
 };
-const evaluateHand = cards => {
+export const evaluateHand = (cards) => {
     if (getFourOfAKind(cards).length)
         return { hand: 'Four of a Kind', rank: 8 };
     if (getFullHouse(cards).length)
@@ -30,8 +30,4 @@ const evaluateHand = cards => {
     if (getPair(cards).length)
         return { hand: 'One Pair', rank: 2 };
     return { hand: 'High Card', rank: 1 };
-};
-module.exports = {
-    shuffleDeck,
-    evaluateHand,
 };

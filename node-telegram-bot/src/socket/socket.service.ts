@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io'
-import { db } from '../serve'
-import { evaluateHand, shuffleDeck } from '../utils'
-import { gameRooms } from './state.gameRooms'
+import { db } from '../serve.js'
+import { evaluateHand, shuffleDeck } from '../utils.js'
+import { gameRooms } from './state.gameRooms.js'
 
 export const joinRoom = (
 	io: Server,

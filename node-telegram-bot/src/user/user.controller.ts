@@ -5,7 +5,7 @@ import {
 	updateBalance,
 	verifyUser,
 	withdraw,
-} from './user.service'
+} from './user.service.js'
 
 const router = express.Router()
 

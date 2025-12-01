@@ -5,7 +5,7 @@ import {
 	placeBet,
 	revealCards,
 	startNewRound,
-} from './socket.service'
+} from './socket.service.js'
 
 export const initializeSockets = (io: Server) => {
 	io.on('connection', socket => {
