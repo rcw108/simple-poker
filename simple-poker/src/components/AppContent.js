@@ -10,6 +10,7 @@ function AppContent() {
 		useState(false)
 	const [isUserVerified, setIsUserVerified] = useState(false) // Track if user verification is successful
 	const [loading, setLoading] = useState(true) // Track loading state
+	const [error, setError] = useState(null) // Track errors
 	const navigate = useNavigate() // Initialize navigate inside the component
 
 	useEffect(() => {
@@ -68,29 +69,38 @@ function AppContent() {
 						if (data.success) {
 							console.log('✅ User verified and added to the database:', data)
 							setIsUserVerified(true) // Mark user as verified
+							setError(null) // Clear any previous errors
 						} else {
-							console.error('❌ Error verifying user:', data.message)
+							const errorMsg = data.message || 'Unknown error verifying user'
+							console.error('❌ Error verifying user:', errorMsg)
+							setError(errorMsg)
 							setIsUserVerified(false) // Mark user as not verified
 						}
 						setLoading(false) // Stop loading
 					})
 					.catch(error => {
+						const errorMsg = error.message || 'Failed to connect to backend server'
 						console.error('❌ Error sending data to the backend:', error)
 						console.error('Error details:', {
 							message: error.message,
 							stack: error.stack,
 							apiUrl: `${API_BASE_URL}/api/verifyUser`
 						})
+						setError(`${errorMsg}. Check if backend server is running at ${API_BASE_URL}`)
 						setIsUserVerified(false) // Mark user as not verified on error
 						setLoading(false) // Stop loading
 					})
 			} else {
-				console.error('Telegram user data is not available. Make sure you are accessing this app from Telegram.')
+				const errorMsg = 'Telegram user data is not available. Make sure you are accessing this app from Telegram.'
+				console.error(errorMsg)
+				setError(errorMsg)
 				setIsUserVerified(false)
 				setLoading(false)
 			}
 		} else {
-			console.error('Telegram WebApp is not available.')
+			const errorMsg = 'Telegram WebApp is not available. Please open this app in Telegram.'
+			console.error(errorMsg)
+			setError(errorMsg)
 			setIsTelegramWebAppDetected(false) // Telegram WebApp not detected
 			setLoading(false) // Stop loading
 		}
@@ -106,18 +116,39 @@ function AppContent() {
 
 	if (!isUserVerified) {
 		return (
-			<div style={{ padding: '20px', textAlign: 'center' }}>
-				<div style={{ fontSize: '18px', marginBottom: '10px', color: '#e74c3c' }}>
-					❌ Error verifying user. Please try again later.
+			<div style={{ 
+				padding: '20px', 
+				textAlign: 'center',
+				minHeight: '100vh',
+				display: 'flex',
+				flexDirection: 'column',
+				justifyContent: 'center',
+				alignItems: 'center',
+				backgroundColor: '#1a1a1a',
+				color: '#fff'
+			}}>
+				<div style={{ fontSize: '24px', marginBottom: '20px', color: '#e74c3c' }}>
+					❌ Error
 				</div>
-				<div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-					Make sure the backend server is running and accessible.
-				</div>
-				<div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+				{error && (
+					<div style={{ 
+						fontSize: '16px', 
+						marginBottom: '20px', 
+						color: '#ff6b6b',
+						maxWidth: '500px',
+						padding: '15px',
+						backgroundColor: '#2a2a2a',
+						borderRadius: '8px',
+						border: '1px solid #e74c3c'
+					}}>
+						{error}
+					</div>
+				)}
+				<div style={{ marginTop: '20px', fontSize: '14px', color: '#999' }}>
 					API URL: {API_BASE_URL}/api/verifyUser
 				</div>
-				<div style={{ marginTop: '10px', fontSize: '11px', color: '#999' }}>
-					Open browser console (F12) to see detailed error messages.
+				<div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+					Check browser console (F12) for detailed error messages.
 				</div>
 			</div>
 		)
