@@ -53,10 +53,17 @@ export const getDepositAddress = expressAsyncHandler(async (req, res) => {
 })
 
 export const getBalance = expressAsyncHandler(async (req, res) => {
+	console.log('[getBalance] Request received:', {
+		query: req.query,
+		userId: req.query.userId,
+		url: req.url,
+		path: req.path
+	})
+	
 	const userId = req.query.userId
 
 	if (!userId) {
-		console.error('User ID is missing in the request.')
+		console.error('[getBalance] User ID is missing in the request. Query:', req.query)
 		res.status(400).json({ success: false, message: 'User ID is required.' })
 		return
 	}
@@ -69,17 +76,34 @@ export const getBalance = expressAsyncHandler(async (req, res) => {
 
 	try {
 		const usersCollection = db.collection('users')
-		const user = await usersCollection.findOne({ id: parseInt(String(userId)) })
+		const userIdNum = parseInt(String(userId))
+		const user = await usersCollection.findOne({ id: userIdNum })
 
 		if (!user) {
-			console.error(`User not found: ${userId}`)
+			console.error(`[getBalance] User not found: ${userId}`)
 			res.status(404).json({ success: false, message: 'User not found.' })
 			return
 		}
 
-		res.json({ success: true, balance: user.balance })
+		// Ensure balance is a number, default to 0 if undefined or null
+		let balance = typeof user.balance === 'number' ? user.balance : 0
+		
+		// If balance is missing, update the user record
+		if (user.balance === undefined || user.balance === null) {
+			console.log(`[getBalance] User ${userId} has no balance, setting to 0`)
+			await usersCollection.updateOne(
+				{ id: userIdNum },
+				{ $set: { balance: 0 } }
+			)
+			balance = 0
+		}
+		
+		console.log(`[getBalance] User ${userId}: balance = ${balance} (type: ${typeof balance})`)
+		const response = { success: true, balance }
+		console.log(`[getBalance] Sending response:`, response)
+		res.json(response)
 	} catch (err) {
-		console.error('Error retrieving balance:', err)
+		console.error('[getBalance] Error retrieving balance:', err)
 		res.status(500).json({ success: false, message: 'Internal server error.' })
 	}
 })
@@ -198,6 +222,7 @@ export const verifyUser = expressAsyncHandler(async (req, res) => {
 	const { initDataUnsafe } = req.body
 
 	if (!initDataUnsafe || !initDataUnsafe.user || !initDataUnsafe.user.id) {
+		console.error('Missing user data in request')
 		res
 			.status(400)
 			.json({ success: false, message: 'Invalid or missing user data. Please ensure you are accessing this from a Telegram WebApp.' })
@@ -221,7 +246,15 @@ export const verifyUser = expressAsyncHandler(async (req, res) => {
 		let user = await usersCollection.findOne({ id: userId })
 
 		if (user) {
-			console.log(`User ${userId} already exists in the database.`)
+			// User already exists, ensure balance is set
+			if (user.balance === undefined || user.balance === null) {
+				await usersCollection.updateOne(
+					{ id: userId },
+					{ $set: { balance: 0 } }
+				)
+				user.balance = 0
+			}
+			// Return user data including balance
 			res.json({ success: true, user })
 			return
 		}
@@ -239,11 +272,13 @@ export const verifyUser = expressAsyncHandler(async (req, res) => {
 		}
 
 		await usersCollection.insertOne(user)
-		console.log(`Created new user: ${userId}`)
+		console.log(`[NEW USER] Created user: ${userId} (${firstName}${username ? ` @${username}` : ''}) with balance: ${user.balance}`)
 
-		res.json({ success: true, user })
+		// Ensure balance is included in response
+		res.json({ success: true, user: { ...user, balance: user.balance || 0 } })
 	} catch (err) {
-		console.error('Error verifying user:', err)
-		res.status(500).json({ success: false, message: 'Internal server error.' })
+		const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+		console.error('Error verifying user:', errorMessage, err)
+		res.status(500).json({ success: false, message: `Internal server error: ${errorMessage}` })
 	}
 })
