@@ -120,8 +120,20 @@ const PokerTable = () => {
 		if (!telegramUser || !telegramUser.id) return
 
 		const syncBalance = () => {
-			fetch(`${API_BASE_URL}/api/getBalance?userId=${telegramUser.id}`)
-				.then((res) => res.json())
+			fetch(`${API_BASE_URL}/api/getBalance?userId=${telegramUser.id}`, {
+				headers: {
+					'ngrok-skip-browser-warning': 'true',
+				},
+			})
+				.then(async (res) => {
+					// Check if response is JSON
+					const contentType = res.headers.get('content-type');
+					if (!contentType || !contentType.includes('application/json')) {
+						const text = await res.text();
+						throw new Error(`Expected JSON but got ${contentType}. This might be an ngrok warning page.`);
+					}
+					return res.json();
+				})
 				.then((data) => {
 					if (data.success) {
 						setBalance(prevBalance => {

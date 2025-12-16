@@ -20,51 +20,64 @@ export const useTelegram = (setBank) => {
       if (initDataUnsafe && initDataUnsafe.user) {
         setTelegramUser(initDataUnsafe.user);
 
-        // Fetch user balance from backend
-        const balanceUrl = `${API_BASE_URL}/api/getBalance?userId=${initDataUnsafe.user.id}`;
-        console.log('[useTelegram] Fetching balance from:', balanceUrl);
-        console.log('[useTelegram] User ID:', initDataUnsafe.user.id);
-        
-        fetch(balanceUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true',
-          },
-        })
-          .then((res) => {
-            console.log('[useTelegram] Balance response status:', res.status, res.statusText);
-            if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            return res.json();
+        // Only fetch balance if setBank is provided
+        if (typeof setBank === 'function') {
+          // Fetch user balance from backend
+          const balanceUrl = `${API_BASE_URL}/api/getBalance?userId=${initDataUnsafe.user.id}`;
+          console.log('[useTelegram] Fetching balance from:', balanceUrl);
+          console.log('[useTelegram] User ID:', initDataUnsafe.user.id);
+          
+          fetch(balanceUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
           })
-          .then((data) => {
-            console.log('[useTelegram] Balance response data:', data);
-            if (data.success) {
-              // Update the bank balance in the parent component via setBank
-              const balance = data.balance ?? 300;
-              console.log('[useTelegram] Initial balance loaded from backend:', balance);
-              setBank(balance);
-              setBalanceError(null); // Clear error on success
-            } else {
-              const errorMsg = data.message || 'Failed to fetch balance from server';
-              console.error('[useTelegram] Error fetching balance:', errorMsg);
-              setBalanceError(errorMsg);
-              setBank(0); // Set default balance on error
-            }
-          })
-          .catch((error) => {
-            const errorMsg = error.message || 'Network error while fetching balance';
-            console.error('[useTelegram] Error fetching balance:', error);
-            console.error('[useTelegram] Error details:', {
-              message: error.message,
-              stack: error.stack,
-              url: balanceUrl
+            .then(async (res) => {
+              console.log('[useTelegram] Balance response status:', res.status, res.statusText);
+              if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+              }
+              // Check if response is JSON
+              const contentType = res.headers.get('content-type');
+              if (!contentType || !contentType.includes('application/json')) {
+                const text = await res.text();
+                throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 100)}`);
+              }
+              return res.json();
+            })
+            .then((data) => {
+              console.log('[useTelegram] Balance response data:', data);
+              if (data.success) {
+                // Update the bank balance in the parent component via setBank
+                const balance = data.balance ?? 300;
+                console.log('[useTelegram] Initial balance loaded from backend:', balance);
+                setBank(balance);
+                setBalanceError(null); // Clear error on success
+              } else {
+                const errorMsg = data.message || 'Failed to fetch balance from server';
+                console.error('[useTelegram] Error fetching balance:', errorMsg);
+                setBalanceError(errorMsg);
+                if (typeof setBank === 'function') {
+                  setBank(0); // Set default balance on error
+                }
+              }
+            })
+            .catch((error) => {
+              const errorMsg = error.message || 'Network error while fetching balance';
+              console.error('[useTelegram] Error fetching balance:', error);
+              console.error('[useTelegram] Error details:', {
+                message: error.message,
+                stack: error.stack,
+                url: balanceUrl
+              });
+              setBalanceError(`${errorMsg}. URL: ${balanceUrl}`);
+              if (typeof setBank === 'function') {
+                setBank(0); // Set default balance on error
+              }
             });
-            setBalanceError(`${errorMsg}. URL: ${balanceUrl}`);
-            setBank(0); // Set default balance on error
-          });
+        }
       } else {
         console.error('Telegram User data is missing.');
       }

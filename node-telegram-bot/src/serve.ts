@@ -26,7 +26,9 @@ const port = process.env.PORT || 80
 const io = new Server(server, {
 	cors: {
 		origin: '*',
-		methods: ['GET', 'POST'],
+		methods: ['GET', 'POST', 'OPTIONS'],
+		allowedHeaders: ['Content-Type', 'ngrok-skip-browser-warning'],
+		credentials: true,
 	},
 })
 
@@ -46,13 +48,22 @@ const initializeRoom = (roomId: string) => {
 
 initializeSockets(io)
 
+// Log all incoming requests first (before CORS)
+app.use((req, res, next) => {
+	console.log(`[Incoming Request] ${req.method} ${req.url} from ${req.headers.origin || 'unknown'}`)
+	next()
+})
+
 app.use(
 	cors({
 		origin: '*',
-		methods: ['GET', 'POST'],
-		allowedHeaders: ['Content-Type'],
+		methods: ['GET', 'POST', 'OPTIONS'],
+		allowedHeaders: ['Content-Type', 'ngrok-skip-browser-warning'],
+		credentials: true,
 	})
 )
+// Handle preflight requests
+app.options('*', cors())
 app.use(bodyParser.json())
 app.use(express.json())
 
@@ -92,7 +103,12 @@ async function connectMongoDB(retries = 5, delay = 3000) {
 	}
 }
 
-connectMongoDB()
+// Initialize server after MongoDB connection
+connectMongoDB().then(() => {
+	console.log('MongoDB connected, server is ready to handle requests')
+}).catch((error) => {
+	console.error('Failed to connect to MongoDB:', error)
+})
 
 const tonweb = new TonWeb(
 	new TonWeb.HttpProvider('https://testnet.toncenter.com/api/v2/jsonRPC', {
@@ -145,11 +161,43 @@ export const walletManager = (() => {
 
 const USD_TO_GAME_VALUE = 100
 
+// Middleware to check database connection
+app.use('/api', (req, res, next) => {
+	if (!db) {
+		console.error('Database not connected when handling request:', req.path)
+		res.status(503).json({ 
+			success: false, 
+			message: 'Database is not available. Please try again later.' 
+		})
+		return
+	}
+	next()
+})
+
 app.get('/', (req, res) => {
 	res.send('Backend server is running!')
 })
 
+// Log all API requests for debugging
+app.use('/api', (req, res, next) => {
+	const queryString = req.url.includes('?') ? req.url.split('?')[1] : ''
+	console.log(`[API Request] ${req.method} ${req.path}${queryString ? `?${queryString}` : ''}`)
+	if (req.method === 'GET' && req.path === '/getBalance') {
+		console.log(`[getBalance] Query params:`, req.query)
+	}
+	next()
+})
+
 app.use('/api', userController)
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+	console.error(`[404] API route not found: ${req.method} ${req.originalUrl}`)
+	res.status(404).json({ 
+		success: false, 
+		message: `API route not found: ${req.method} ${req.path}` 
+	})
+})
 
 async function checkForDeposits() {
 	const walletAddress = walletManager

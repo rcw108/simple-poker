@@ -16,15 +16,27 @@ const tonweb = new TonWeb(new TonWeb.HttpProvider('https://toncenter.com/api/v2/
 }));
 const walletAddress = process.env.WALLET_ADDRESS;
 const presetAmounts = [1, 2, 5, 10];
-const gameUrl = process.env.GAME_URL || 'https://simple-poker-kappa.vercel.app/';
+const gameUrl = 'https://simple-poker-kappa.vercel.app/';
 // Helper function to create a game button (Web App for HTTPS, URL for HTTP)
 function createGameButton(text, url) {
-    if (url.startsWith('https://')) {
-        return { text, web_app: { url } };
+    // Remove trailing slash if present
+    const cleanUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+    if (cleanUrl.startsWith('https://')) {
+        return { text, web_app: { url: cleanUrl } };
+    }
+    else if (cleanUrl.startsWith('http://')) {
+        // HTTP URLs cannot be used for Web App buttons in Telegram
+        // Log warning and return URL button instead
+        console.warn(`Warning: HTTP URL detected (${cleanUrl}). Telegram requires HTTPS for Web App buttons. Using regular URL button instead.`);
+        console.warn('For local development, use ngrok to create an HTTPS tunnel:');
+        console.warn('  1. Install ngrok: https://ngrok.com/download');
+        console.warn('  2. Run: ngrok http 3000');
+        console.warn('  3. Update GAME_URL in .env to the ngrok HTTPS URL');
+        return { text, url: cleanUrl };
     }
     else {
-        // For HTTP URLs (like localhost), use regular URL button
-        return { text, url };
+        console.error(`Invalid URL format: ${url}. Expected http:// or https://`);
+        return { text, url: cleanUrl };
     }
 }
 let db;
@@ -48,16 +60,10 @@ async function updateUserBalance(userId, amountNano, txId) {
     const amountAsNumber = Number(TonWeb.utils.fromNano(amountNano));
     await db.collection('users').updateOne({ id: userIdNum }, {
         $inc: { balance: amountAsNumber },
-        $push: {
-            processedTransactions: {
-                id: txId,
-                amount: amountAsNumber,
-                timestamp: new Date(),
-            },
-        },
+        $push: { processedTransactions: txId },
     }, { upsert: true });
 }
-async function getUserBalance(userId) {
+async function getUserBalance(userId, from) {
     if (!db) {
         console.error('Database not connected');
         throw new Error('Database not connected');
@@ -68,17 +74,21 @@ async function getUserBalance(userId) {
         if (!user) {
             // Auto-register user if not found
             console.log(`Registering new user with ID ${userId}`);
-            await db.collection('users').insertOne({
+            const newUser = {
                 id: userIdNum,
+                firstName: from?.first_name || '',
+                username: from?.username || '',
                 balance: 0,
+                bonusBalance: 100,
                 processedTransactions: [],
                 createdAt: new Date(),
-            });
+            };
+            await db.collection('users').insertOne(newUser);
             user = await db.collection('users').findOne({ id: userIdNum });
             if (!user) {
                 throw new Error(`Failed to create user ${userId}`);
             }
-            console.log(`User ${userId} registered successfully`);
+            console.log(`[NEW USER] Created user: ${userId} (${from?.first_name || ''}${from?.username ? ` @${from.username}` : ''})`);
         }
         console.log(`Balance for user ${userId}: ${user.balance}`);
         return user.balance || 0;
@@ -91,7 +101,7 @@ async function getUserBalance(userId) {
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-        const balance = await getUserBalance(String(chatId));
+        const balance = await getUserBalance(String(chatId), msg.from);
         const welcomeMessage = `🎮 Welcome to Simple Poker Bot!\n\n` +
             `Your current balance: ${balance} in-game units\n\n` +
             `Available commands:\n` +
@@ -114,7 +124,7 @@ bot.onText(/\/start/, async (msg) => {
 bot.onText(/\/balance/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-        const balance = await getUserBalance(String(chatId));
+        const balance = await getUserBalance(String(chatId), msg.from);
         bot.sendMessage(chatId, `Your current balance is: ${balance} in-game units`);
     }
     catch (error) {
@@ -136,7 +146,7 @@ bot.onText(/\/help/, async (msg) => {
 bot.onText(/\/game/, async (msg) => {
     const chatId = msg.chat.id;
     try {
-        const balance = await getUserBalance(String(chatId));
+        const balance = await getUserBalance(String(chatId), msg.from);
         const keyboard = {
             inline_keyboard: [
                 [createGameButton('Play Game', gameUrl)],
